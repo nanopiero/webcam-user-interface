@@ -186,3 +186,26 @@ Verify that the application starts with Docker Compose, ingests representative o
 Deliver the implementation, configuration examples, migrations, tests and concise deployment documentation. Report any limitations verified in the actual MQTT contract.
 
 Keep the application lightweight and independent of the operational ML infrastructure.
+
+## Public access through Nginx — Rocky Linux, without DNS
+
+The webcam UI will initially be exposed through the EWC VM's **public IP address**, without a DNS name.
+
+Provide a deployment procedure for **Rocky Linux 9**, using Nginx as an HTTPS reverse proxy.
+
+Requirements:
+
+- Allow visitors to access `https://<PUBLIC_IP>/` using a username and password.
+- Implement viewer authentication through Nginx HTTP Basic Authentication, using securely hashed passwords.
+- Keep the webcam application on a private interface or localhost, accessible only to Nginx.
+- Never expose PostgreSQL or MQTT directly to the Internet.
+- Preserve separate application administrator authentication for modifying the webcam blacklist.
+- Support an EWC public/floating IP without requiring DNS.
+- Prefer a publicly trusted **Let's Encrypt IP-address certificate** using Certbot 5.4+ with the `shortlived` profile and webroot validation. Configure automatic renewal and Nginx reload.
+- Do not use the traditional domain-based `certbot --nginx -d` command.
+- Document Rocky Linux `dnf` installation commands, EWC security groups, `firewalld`, and SELinux configuration for Nginx reverse-proxy connections.
+- Keep HTTPS mandatory for password authentication. Do not offer unauthenticated or unencrypted HTTP as a fallback.
+- Provide example Nginx configuration using placeholders for the public IP, upstream private IP and certificate paths.
+- Ensure the frontend calls the backend API through the same HTTPS origin.
+
+Document the deployment in `docs/nginx-rocky.md`, separately from the main application configuration.
