@@ -154,7 +154,15 @@ By default, it starts in the language of the configured ROI: France uses French.
 A saved viewer choice takes precedence. Set `"language": "roi"` for the automatic
 ROI default, or a menu language code such as `"fr"`, `"de"` or `"fi"` to override
 the deployment default. See [interface languages](../frontend/src/i18n/README.md)
-for the country defaults, catalogue maintenance and translation scope.
+for the country defaults, catalogue maintenance and translation scope. The
+[Europe preset](../config/presets/europe/README.md) defaults to English and loads
+its entire country list without a neighboring-country toggle.
+
+Switching snow/visibility or language keeps the current map center and zoom,
+including when a selected webcam temporarily disappears during a data reload.
+Header, toolbar and footer rows reserve their space, and the document scrollbar
+gutter is stable, so longer labels do not shift the map. On small screens the
+controls use two fixed rows; long button/header text is clipped where necessary.
 
 Copy `config/frontend.example.json` to the ignored `config/frontend.local.json` (initialization
 does this automatically). It is mounted read-only and loaded on page start; reload the browser

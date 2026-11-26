@@ -36,6 +36,7 @@ interface Props {
   showSupplementary: boolean;
   borders: BorderVisibility;
   selected: SiteFeature | null;
+  selectionKey: string | null;
   onClearSelection: () => void;
   supplementary: SupplementaryFeature[];
   allSupplementary: SupplementaryFeature[];
@@ -45,7 +46,7 @@ interface Props {
 }
 
 // One WebGL source for all sites; only the selected site uses interactive HTML.
-export default function MapView({ configuration, sites, allSites, parameter, altitudeBand, showObserved, showSupplementary, borders, selected, onClearSelection, onSelect, supplementary, allSupplementary, selectedSupplementary, onSelectSupplementary }: Props) {
+export default function MapView({ configuration, sites, allSites, parameter, altitudeBand, showObserved, showSupplementary, borders, selected, selectionKey, onClearSelection, onSelect, supplementary, allSupplementary, selectedSupplementary, onSelectSupplementary }: Props) {
   const { t, language, locale } = useI18n();
   const tRef = useRef(t);
   tRef.current = t;
@@ -101,6 +102,13 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
       return;
     }
     map.current = instance;
+    const recordView = () => {
+      const centre = instance.getCenter();
+      // Expose the current view for browser diagnostics without recreating the map.
+      instance.getContainer().dataset.view = JSON.stringify([centre.lng, centre.lat, instance.getZoom()]);
+    };
+    recordView();
+    instance.on("moveend", recordView);
     instance.on("error", event => {
       if (/worker|sites/i.test(event.error.message)) setError("Map markers could not load. Reload the page to retry.");
     });
@@ -227,11 +235,14 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
 
   useEffect(() => {
     if (!ready || !map.current) return;
+    if (!selectionKey) { focusedId.current = null; return; }
     const selection = selectedSupplementary ?? selected;
-    if (selection && focusedId.current !== selection.properties.id) map.current.easeTo({ center: selection.geometry.coordinates,
+    // A selected site may be temporarily absent while parameter/time data reloads.
+    if (!selection) return;
+    if (focusedId.current !== selectionKey) map.current.easeTo({ center: selection.geometry.coordinates,
       offset: [map.current.getContainer().clientWidth > 650 ? -185 : 0, 0], duration: 450 });
-    focusedId.current = selection?.properties.id ?? null;
-  }, [selected, selectedSupplementary, ready]);
+    focusedId.current = selectionKey;
+  }, [selectionKey, selected, selectedSupplementary, ready]);
 
   useEffect(() => {
     const element = container.current;
