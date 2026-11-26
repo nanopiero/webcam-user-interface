@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { classColour, visibilityBandColours } from "./icons";
 import { targetKey, targetName, type WebcamTarget } from "./overlap";
+import { smallWhiteMarker } from "./presentation";
 
 interface Props {
   choices: WebcamTarget[];
@@ -22,6 +23,7 @@ export default function WebcamChooser({ choices, position, onChoose, onClose }: 
       const background = target.kind === "supplementary" ? "#111111" : band
         ? `linear-gradient(${band.upper} 50%, ${band.lower} 50%)` : classColour(camera?.cls);
       const ageing = camera?.freshness === "ageing" && camera.cls !== "white";
+      const small = target.kind === "supplementary" || (camera !== undefined && smallWhiteMarker(camera));
       const subtitle = target.kind === "supplementary" ? "Additional webcam" : [
         target.site.properties.name === camera?.name ? target.site.properties.platform
           : target.site.properties.name ?? target.site.properties.platform,
@@ -30,7 +32,7 @@ export default function WebcamChooser({ choices, position, onChoose, onClose }: 
       ].filter(Boolean).join(" · ");
       return <button key={targetKey(target)} data-webcam-key={targetKey(target)} ref={index === 0 ? first : undefined}
         onClick={() => onChoose(target)}>
-        <span className={`swatch${ageing ? " freshness-ring" : ""}`} style={{ background }} />
+        <span className={`swatch${small ? " catalogue-swatch" : ""}${ageing ? " freshness-ring" : ""}`} style={{ background }} />
         <span><strong>{targetName(target)}</strong><small>{subtitle}</small></span>
       </button>;
     })}</div>

@@ -167,6 +167,7 @@ summary { cursor: pointer; color: #657f8c; font-size: 11px; }
 .webcam-chooser .panel-heading { margin-bottom: 8px; font-size: 12px; }
 .webcam-choices { display: grid; gap: 5px; max-height: 220px; overflow: auto; }
 .webcam-choices button { display: flex; align-items: center; gap: 9px; text-align: left; padding: 8px; }
+.webcam-choices .catalogue-swatch { width: 8px; height: 8px; }
 .webcam-choices strong { display: block; font-size: 12px; font-weight: 500; }
 .webcam-choices small { display: block; margin-top: 3px; color: #607580; font-size: 10px; }
 .bordering-toggle { margin: 0; font-weight: 500; }
