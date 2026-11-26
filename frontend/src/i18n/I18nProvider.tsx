@@ -10,12 +10,12 @@ function storedLanguage(): Language | null {
 const I18nContext = createContext({ language: "en" as Language, locale: "en-GB", t: translator("en"),
   busy: false, error: "", setLanguage: (_language: Language) => {} });
 
-export function preferredLanguage(configuration: { language?: string; roi: { countries: string[] } }): Language {
+export function preferredLanguage(configuration: { language?: string; roi: { name?: string; countries: string[] } }): Language {
   return storedLanguage() ?? defaultLanguage(configuration);
 }
 
 export function I18nProvider({ configuration, children }: {
-  configuration: { language?: string; roi: { countries: string[] } }; children: ReactNode;
+  configuration: { language?: string; roi: { name?: string; countries: string[] } }; children: ReactNode;
 }) {
   const [language, setLanguage] = useState<Language>(() => preferredLanguage(configuration));
   const [busy, setBusy] = useState(false), [error, setError] = useState("");

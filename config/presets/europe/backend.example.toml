@@ -1,0 +1,86 @@
+# Initialize a new Europe deployment with `webcam-ui init --preset europe`.
+# Keep real infrastructure details in backend.local.toml. See this preset’s README.
+# Secret paths refer to read-only container mounts, not secret values.
+[database]
+host = "postgres"
+port = 5432
+name = "webcam_ui"
+user = "webcam_ui"
+password_file = "/run/secrets/db_password"
+host_data_directory = "/data/db_ui"
+pool_size = 5
+connect_timeout_seconds = 5
+statement_timeout_seconds = 15
+
+[mqtt]
+host = "mqtt.example.invalid"
+port = 8883
+topics = ["eu.eumetnet/+/+"]
+client_id = "webcam-ui-observations"
+qos = 1
+ca_file = "/run/secrets/esoh-ca.crt"
+credentials_file = "/run/secrets/mqtt_credentials"
+keepalive_seconds = 60
+maximum_payload_bytes = 1048576
+reconnect_min_seconds = 2
+reconnect_max_seconds = 60
+metrics_port = 9090
+
+[roi]
+# All configured countries load together; no neighbouring-country toggle.
+name = "Europe"
+countries = ["AD", "AL", "AT", "AX", "BA", "BE", "BG", "BY", "CH", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FO", "FR", "GB", "GG", "GI", "GR", "HR", "HU", "IE", "IM", "IS", "IT", "JE", "LI", "LT", "LU", "LV", "MC", "MD", "ME", "MK", "MT", "NL", "NO", "PL", "PT", "RO", "RS", "RU", "SE", "SI", "SJ", "SK", "SM", "TR", "UA", "VA", "XK"]
+
+[filters]
+# Keep this list equal to roi.countries: Europe has no separate neighbours.
+allowed_countries = ["AD", "AL", "AT", "AX", "BA", "BE", "BG", "BY", "CH", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FO", "FR", "GB", "GG", "GI", "GR", "HR", "HU", "IE", "IM", "IS", "IT", "JE", "LI", "LT", "LU", "LV", "MC", "MD", "ME", "MK", "MT", "NL", "NO", "PL", "PT", "RO", "RS", "RU", "SE", "SI", "SJ", "SK", "SM", "TR", "UA", "VA", "XK"]
+
+[filters.bounding_box]
+# Applied to both incoming observations and map reads of previously stored webcams.
+enabled = true
+west = -32.0
+south = 27.0
+east = 60.0
+north = 82.0
+
+[auth]
+username = "admin"
+password_hash_file = "/run/secrets/admin_password_hash"
+session_secret_file = "/run/secrets/session_secret"
+session_seconds = 28800
+allow_development_credentials = false
+login_attempts_per_minute = 10
+
+[providers]
+windy_api_key_file = "/run/secrets/windy_api_key"
+current_images_enabled = true
+cache_seconds = 240
+maximum_cached_cameras = 1024
+request_timeout_seconds = 10
+
+[api]
+host = "0.0.0.0"
+port = 8080
+frontend_config_file = "/app/config/frontend.json"
+frontend_dist_directory = "/app/frontend/dist"
+maximum_map_cameras = 50000
+maximum_history_points = 10000
+maximum_history_days = 366
+
+# Ages are measured from the observation/download timestamp, separately per parameter.
+# At fresh_minutes: white ring, coloured centre. At max_age_minutes: small white dot.
+[api.snow_freshness]
+fresh_minutes = 30
+max_age_minutes = 180
+
+[api.visibility_freshness]
+fresh_minutes = 15
+max_age_minutes = 30
+
+# Read-only supplementary map points. Exporter and CSV can live outside this repository.
+[supplementary_webcams]
+enabled = false
+csv_file = "/app/catalogue/umap-webcams.csv"
+host_directory = "../var/catalogue"
+minimum_distance_metres = 250.0
+maximum_rows = 50000

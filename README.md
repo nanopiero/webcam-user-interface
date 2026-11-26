@@ -64,6 +64,10 @@ python3.12 -m venv .venv
 .venv/bin/webcam-ui init
 ```
 
+For a new Europe-wide deployment, use `webcam-ui init --preset europe`. The
+[Europe preset](config/presets/europe/README.md) uses English and loads its entire
+country list directly, with no neighboring-country toggle.
+
 Edit **`config/backend.local.toml`**: supply the MQTT broker, TLS port and observation
 topic(s). The supplied `.secrets/mosquitto_sub` file is read as credential data, never executed.
 Keep the CA in `.secrets/esoh-ca.crt` and the optional Windy key in `.secrets/wind_api_key`.

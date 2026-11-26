@@ -46,7 +46,8 @@ export function isLanguage(value: unknown): value is Language {
   return typeof value === "string" && LANGUAGES.some(item => item.code === value);
 }
 
-export function defaultLanguage(configuration: { language?: string; roi: { countries: string[] } }): Language {
+export function defaultLanguage(configuration: { language?: string; roi: { name?: string; countries: string[] } }): Language {
   if (isLanguage(configuration.language)) return configuration.language;
+  if (configuration.roi.name?.trim().toLowerCase() === "europe") return "en";
   return ROI_LANGUAGES[configuration.roi.countries[0]?.toUpperCase()] ?? "en";
 }

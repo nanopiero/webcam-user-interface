@@ -21,6 +21,10 @@ python3.12 -m venv .venv
 .venv/bin/webcam-ui init
 ```
 
+For a new Europe deployment, use `.venv/bin/webcam-ui init --preset europe` instead.
+The [Europe preset](../config/presets/europe/README.md) starts in English, loads all
+configured European countries together and has no neighboring-country toggle.
+
 Initialization is idempotent and preserves existing credentials and local settings. It creates:
 
 | Ignored local file | Purpose |

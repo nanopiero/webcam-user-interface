@@ -18,6 +18,9 @@ export function usePresentation() {
       snowClassLabel: (value: number | null, thresholds = {}) => snowClass(value, thresholds, t),
       countryLabel: (code: string) => country(code, locale),
       roiName: (roi: { name: string; countries: string[] }) => {
+        if (roi.name.trim().toLowerCase() === "europe") {
+          return new Intl.DisplayNames([locale], { type: "region", fallback: "none" }).of("150") ?? roi.name;
+        }
         const code = roi.countries[0];
         if (roi.countries.length !== 1 || !code) return roi.name;
         const name = new Intl.DisplayNames(["en"], { type: "region" }).of(code);

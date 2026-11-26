@@ -53,3 +53,10 @@ it("shows and hides configured neighbours while preserving the ROI country", () 
   fireEvent.click(screen.getByRole("checkbox", { name: "Show bordering webcams" }));
   expect(change).toHaveBeenLastCalledWith(false);
 });
+
+it("has no neighbouring-country control when Europe loads every permitted country", () => {
+  const countries = ["FR", "GB", "DE", "FI", "IS"];
+  render(<CountryFilter countries={countries} roi={{ name: "Europe", countries }} value={false} onChange={vi.fn()} />);
+  expect(screen.queryByRole("checkbox")).toBeNull();
+  expect(borderLayersForROI("Europe").map(layer => layer.key)).toEqual(["national"]);
+});

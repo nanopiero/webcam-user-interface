@@ -23,6 +23,8 @@ describe("member-country languages", () => {
     }
     expect(defaultLanguage({ language: "fr", roi: { countries: ["BE"] } })).toBe("fr");
     expect(defaultLanguage({ roi: { countries: ["XX"] } })).toBe("en");
+    expect(defaultLanguage({ language: "roi", roi: { name: "Europe", countries: ["FR", "DE", "FI"] } })).toBe("en");
+    expect(defaultLanguage({ language: "fr", roi: { name: "Europe", countries: ["DE", "FR"] } })).toBe("fr");
   });
   for (const language of LANGUAGES) {
     it(`${language.code} has every source message and preserves all interpolation fields`, async () => {

@@ -28,14 +28,18 @@ def _write_secret(path: Path, value: str):
     path.chmod(0o600)
 
 
-def initialize(root: Path, development: bool = False):
+def initialize(root: Path, development: bool = False, preset: str = "france"):
     """Do not overwrite existing settings or credentials on repeat runs."""
+    examples = {"france": root / "config", "europe": root / "config/presets/europe"}
+    if preset not in examples:
+        raise ValueError("unknown configuration preset")
+    template = examples[preset]
     directory = root / ".secrets"
     directory.mkdir(exist_ok=True, mode=0o700)
     directory.chmod(0o700)
     local = root / "config/backend.local.toml"
     if not local.exists():
-        content = (root / "config/backend.example.toml").read_text()
+        content = (template / "backend.example.toml").read_text()
         content = content.replace('client_id = "webcam-ui-observations"',
                                   f'client_id = "webcam-ui-{uuid.uuid4().hex[:16]}"')
         if development:
@@ -45,7 +49,7 @@ def initialize(root: Path, development: bool = False):
         local.chmod(0o600)
     frontend = root / "config/frontend.local.json"
     if not frontend.exists():
-        shutil.copyfile(root / "config/frontend.example.json", frontend)
+        shutil.copyfile(template / "frontend.example.json", frontend)
     for name in ("db_password", "session_secret"):
         if not (directory / name).exists():
             _write_secret(directory / name, secrets.token_urlsafe(48))
@@ -93,6 +97,8 @@ def main(argv=None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     init = commands.add_parser("init", help="initialize ignored local settings and strong credentials")
     init.add_argument("--development", action="store_true", help="local-only initial admin/1234 credentials")
+    init.add_argument("--preset", choices=("france", "europe"), default="france",
+                      help="starting configuration for a new deployment; existing settings are preserved")
     commands.add_parser("set-admin-password", help="replace the application admin password; restart API afterwards")
     for name in ("migrate", "listen", "serve", "status", "health-listener", "health-api"):
         commands.add_parser(name)
@@ -108,7 +114,7 @@ def main(argv=None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     try:
         if args.command == "init":
-            initialize(Path.cwd(), args.development)
+            initialize(Path.cwd(), args.development, args.preset)
             return 0
         if args.command == "set-admin-password":
             password = getpass.getpass("New application admin password: ")

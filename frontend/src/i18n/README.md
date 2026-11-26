@@ -18,6 +18,10 @@ The order of precedence is:
 3. The first country in the configured ROI when `language` is `"roi"` or omitted.
 4. English for an ROI country without a registered default.
 
+The regional ROI **Europe** defaults to English, independently of country ordering.
+The [Europe deployment preset](../../../config/presets/europe/README.md) supplies
+its geographic extent and loads every permitted country without a neighbor toggle.
+
 This uses the configured ROI, not the webcam country fields, browser language or
 optional bordering countries. France starts in French; Finland starts in Finnish.
 The default for multilingual Belgium is Dutch, Switzerland German, Luxembourg
