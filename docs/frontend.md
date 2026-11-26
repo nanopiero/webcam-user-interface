@@ -80,7 +80,7 @@ in the right panel and follow the active filters.
   selected map time. Once the parameter's maximum age has elapsed since observations stopped,
   only small white WEOW dots and small black supplementary dots remain.
   The details panel explicitly labels its numerical summary as the latest received observation;
-  history can end at the selected map time.
+  histories open through the present independently of the selected map date.
 - The webcam popup puts **Latest prediction** first in its observation section, followed by three
   UTC clocks: **Download in E-SOH** (`download_timestamp`), **Processed** (`processing_timestamp`),
   and **UI backend reception** (`received_at`). Missing times remain explicitly unavailable.
@@ -108,8 +108,10 @@ in the right panel and follow the active filters.
   Each panel keeps its selected webcam and loaded range while the map selection changes. A solid
   black vertical guide follows the current map time above, without resetting the chart zoom or
   requesting history again. The chart legend gives that UTC time and indicates when it is outside
-  the visible chart range. The default range is **seven days**, configurable through
-  `diagram.initial_days`. **Earlier/Later** fetch the adjacent period; the range dropdown offers
+  the visible chart range. The default range is **seven days ending at the present**, configurable
+  through `diagram.initial_days`. Preset ranges also end at the present when selected; the map-date
+  guide stays at the selected map time so later observations remain visible. **Earlier/Later**
+  fetch the adjacent period; the range dropdown offers
   one hour through the configured maximum. **Dates** reveals custom UTC inputs when needed.
   **Load older observations** follows continuation pages when a range exceeds the server page size.
 - Raw intervals are model outputs; visibility raw values are not metres. **Calibrated · m** shows

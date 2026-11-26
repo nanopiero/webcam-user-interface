@@ -12,7 +12,7 @@ export default function HistoryPanel({ diagram, configuration, mapTime, onClose 
   diagram: DiagramRequest; configuration: FrontendConfiguration; mapTime: string | null; onClose: () => void;
 }) {
   const [range, setRange] = useState(() => {
-    const end = diagram.at ?? new Date().toISOString();
+    const end = new Date().toISOString();
     return { start: new Date(Date.parse(end) - Math.min(configuration.diagram.initial_days, configuration.diagram.max_days) * 86400000).toISOString(), end };
   });
   const [draft, setDraft] = useState({ start: toUTCInput(range.start), end: toUTCInput(range.end) });
@@ -90,7 +90,7 @@ export default function HistoryPanel({ diagram, configuration, mapTime, onClose 
       <label>Range <select aria-label="History time range" value={preset} onChange={event => {
         setPreset(event.target.value);
         if (event.target.value === "custom") { setShowDates(true); return; }
-        const end = diagram.at ?? new Date().toISOString();
+        const end = new Date().toISOString();
         const start = new Date(Date.parse(end) - Number(event.target.value) * 86400000).toISOString();
         resetPeriod.current = { range: { start, end }, preset: event.target.value };
         setRange({ start, end }); setDraft({ start: toUTCInput(start), end: toUTCInput(end) });
