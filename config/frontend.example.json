@@ -10,6 +10,7 @@
       "maxzoom": 19
     }
   },
+  "language": "roi",
   "default_parameter": "snow",
   "parameters": ["snow", "visibility"],
   "pie_sector_limit": 12,

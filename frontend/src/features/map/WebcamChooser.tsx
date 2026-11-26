@@ -1,3 +1,4 @@
+import { useI18n } from "../../i18n/I18nProvider";
 import { useEffect, useRef } from "react";
 import { classColour, visibilityBandColours } from "./icons";
 import { targetKey, targetName, type WebcamTarget } from "./overlap";
@@ -11,12 +12,13 @@ interface Props {
 }
 
 export default function WebcamChooser({ choices, position, onChoose, onClose }: Props) {
+  const { t } = useI18n();
   const first = useRef<HTMLButtonElement>(null);
   useEffect(() => { first.current?.focus({ preventScroll: true }); }, []);
-  return <section className="webcam-chooser" role="dialog" aria-label="Choose a webcam"
+  return <section className="webcam-chooser" role="dialog" aria-label={t("Choose a webcam")}
     style={position} onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); onClose(); } }}>
-    <div className="panel-heading"><strong>Choose a webcam · {choices.length}</strong>
-      <button className="icon-button" aria-label="Close webcam chooser" onClick={onClose}>×</button></div>
+    <div className="panel-heading"><strong>{t("Choose a webcam ·")}{" "}{choices.length}</strong>
+      <button className="icon-button" aria-label={t("Close webcam chooser")} onClick={onClose}>×</button></div>
     <div className="webcam-choices">{choices.map((target, index) => {
       const camera = target.kind === "observed" ? target.camera : undefined;
       const band = visibilityBandColours(camera?.cls);
@@ -24,11 +26,11 @@ export default function WebcamChooser({ choices, position, onChoose, onClose }: 
         ? `linear-gradient(${band.upper} 50%, ${band.lower} 50%)` : classColour(camera?.cls);
       const ageing = camera?.freshness === "ageing" && camera.cls !== "white";
       const small = target.kind === "supplementary" || (camera !== undefined && smallWhiteMarker(camera));
-      const subtitle = target.kind === "supplementary" ? "Additional webcam" : [
+      const subtitle = target.kind === "supplementary" ? t("Additional webcam") : [
         target.site.properties.name === camera?.name ? target.site.properties.platform
           : target.site.properties.name ?? target.site.properties.platform,
         camera && target.site.properties.n > 1
-          ? `View ${target.site.properties.cams.findIndex(view => view.p === camera.p) + 1}` : null,
+          ? t("View {value0}", { value0: target.site.properties.cams.findIndex(view => view.p === camera.p) + 1 }) : null,
       ].filter(Boolean).join(" · ");
       return <button key={targetKey(target)} data-webcam-key={targetKey(target)} ref={index === 0 ? first : undefined}
         onClick={() => onChoose(target)}>

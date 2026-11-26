@@ -1,11 +1,15 @@
 import { defineConfig } from "@playwright/test";
 
+const baseURL = process.env.UI_TEST_BASE_URL ?? "http://127.0.0.1:8080";
+
 export default defineConfig({
   testDir: "./e2e",
   workers: 1,
   timeout: 45000,
   use: {
-    baseURL: process.env.UI_TEST_BASE_URL ?? "http://127.0.0.1:8080",
+    baseURL,
+    storageState: { cookies: [], origins: [{ origin: new URL(baseURL).origin,
+      localStorage: [{ name: "webcam-ui-language", value: "en" }] }] },
     viewport: { width: 1440, height: 1000 },
     launchOptions: { args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] },
     screenshot: "only-on-failure",

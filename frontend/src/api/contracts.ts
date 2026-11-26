@@ -5,6 +5,7 @@ export interface BorderVisibility { national: boolean; regions: boolean; departm
 export type DiagramMode = "raw" | "calibrated" | "classes";
 
 export interface FrontendConfiguration {
+  language?: string;
   countries: string[];
   roi: { name: string; countries: string[] };
   map: {

@@ -1,3 +1,4 @@
+import { useI18n } from "../../i18n/I18nProvider";
 import type { AltitudeBand } from "../../api/contracts";
 
 export function matchesAltitude(altitude: number | null, band: AltitudeBand): boolean {
@@ -9,8 +10,9 @@ export function matchesAltitude(altitude: number | null, band: AltitudeBand): bo
 }
 
 export default function AltitudeFilter({ value, onChange }: { value: AltitudeBand; onChange: (value: AltitudeBand) => void }) {
+  const { t } = useI18n();
   const choices: [AltitudeBand, string][] = [["all", "All altitudes"], ["low", "Below 500 m"], ["middle", "500–1,000 m"], ["high", "Above 1,000 m"]];
-  return <section className="altitude-filter" aria-label="Camera altitude filter"><h2>Altitude</h2>
-    <div className="altitude-buttons">{choices.map(([key, label]) => <button key={key} className={value === key ? "active" : ""} aria-pressed={value === key} onClick={() => onChange(key === value ? "all" : key)}>{label}</button>)}</div>
+  return <section className="altitude-filter" aria-label={t("Camera altitude filter")}><h2>{t("Altitude")}</h2>
+    <div className="altitude-buttons">{choices.map(([key, label]) => <button key={key} className={value === key ? "active" : ""} aria-pressed={value === key} onClick={() => onChange(key === value ? "all" : key)}>{t(label)}</button>)}</div>
   </section>;
 }

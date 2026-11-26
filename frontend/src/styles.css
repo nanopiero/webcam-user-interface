@@ -30,6 +30,10 @@ label { color: #536a78; }
 .brand-subtitle { color: #7a8c98; font-size: 11px; display: block; margin-top: 2px; }
 .roi-label { display: inline-block; white-space: nowrap; }
 .topbar-right { display: flex; gap: 22px; align-items: center; flex-shrink: 0; }
+.brand > div { min-width: 0; }
+.language-menu { position: relative; display: inline-flex; }
+.language-menu select { width: 125px; font-size: 11px; padding: 6px 7px; }
+.language-short { display: none; pointer-events: none; }
 .connection { color: #8a6d45; font-size: 11px; display: flex; align-items: center; gap: 7px; }
 .connection i { width: 6px; height: 6px; background: #c48d43; border-radius: 50%; }
 .connection.connected { color: #5d7c70; }
@@ -164,6 +168,7 @@ label { color: #536a78; }
 .legend-band .legend { margin-top: 0; border: 0; padding: 20px 15px; }
 .legend-band .keys { gap: 13px; margin: 18px 0; }
 .legend-band .keys li { align-items: flex-start; line-height: 1.45; }
+.legend-band .keys li, .metadata dt { overflow-wrap: anywhere; }
 .catalogue-swatch { width: 8px; height: 8px; margin: 3px; }
 .catalogue-dot { background: #111; }
 .catalogue-toggle { padding: 10px 16px 0; }
@@ -211,3 +216,14 @@ summary { cursor: pointer; color: #657f8c; font-size: 11px; }
 @media (max-width: 440px) { .sidebar { width: 140px; } .site-summary { padding: 10px; font-size: 10px; } .site-item small { font-size: 9px; } .legend { padding: 10px; } .legend h2 { font-size: 11px; } .keys { gap: 6px; } .keys li { gap: 6px; font-size: 9px; } .swatch { width: 11px; height: 11px; } .refresh-controls { gap: 8px; margin-left: auto; } .refresh-controls label { font-size: 10px; } .refresh-controls button { font-size: 11px; padding: 6px 8px; } }
 @media (max-width: 1100px) { .legend-band { width: 160px; } .legend-band .legend { padding: 18px 12px; } }
 @media (max-width: 760px) { .sidebar { position: absolute; top: 0; left: 0; bottom: 0; width: 230px; z-index: 5; transform: translateX(-100%); visibility: hidden; box-shadow: 5px 0 25px #29465322; } .sidebar.sidebar-open { transform: none; visibility: visible; } .explorer-toggle { display: block; } .legend-band { width: 105px; } .legend-band .legend { padding: 14px 9px; } .legend-band .legend h2 { font-size: 11px; } .legend-band .keys { gap: 11px; } .legend-band .keys li { font-size: 10px; gap: 6px; } .legend-band .legend .small { display: block; font-size: 9px; } .refresh-controls { gap: 7px; } .refresh-controls label { display: none; } .toolbar .parameter-switch button { min-width: 68px; } .chart-toolbar .segmented button { font-size: 10px; padding: 5px 6px; } }
+
+@media (max-width: 760px) {
+  .topbar { gap: 8px; }
+  .topbar-right { gap: 6px; }
+  .brand h1 { overflow-wrap: anywhere; line-height: 1.2; }
+  .brand-subtitle { line-height: 1.35; }
+  .language-menu select { width: 57px; color: transparent; appearance: none; }
+  .language-menu option { color: #263e4c; }
+  .language-short { display: block; position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: #263e4c; font-size: 10px; }
+  .language-menu::after { content: ""; position: absolute; right: 8px; top: 45%; border: 3px solid transparent; border-top-color: #637985; pointer-events: none; }
+}

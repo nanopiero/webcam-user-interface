@@ -149,6 +149,13 @@ in the right panel and follow the active filters.
 
 ## Configuration
 
+The header language menu offers the languages of EUMETNET member countries.
+By default, it starts in the language of the configured ROI: France uses French.
+A saved viewer choice takes precedence. Set `"language": "roi"` for the automatic
+ROI default, or a menu language code such as `"fr"`, `"de"` or `"fi"` to override
+the deployment default. See [interface languages](../frontend/src/i18n/README.md)
+for the country defaults, catalogue maintenance and translation scope.
+
 Copy `config/frontend.example.json` to the ignored `config/frontend.local.json` (initialization
 does this automatically). It is mounted read-only and loaded on page start; reload the browser
 after editing it. It contains no credentials.
@@ -160,6 +167,7 @@ See [deploying for another country](backend-operations.md#configure-before-start
 
 | Setting | Purpose |
 | --- | --- |
+| `language` | `roi` by default; an explicit language code overrides the ROI startup language |
 | `map.center`, `map.zoom` | Initial Bourges/France view; independent of backend geographic filtering |
 | `map.basemap` | Raster tile URL(s), visible attribution and provider maximum zoom |
 | `map.marker_scale` | WEOW icon width/height multiplier; default 0.65, black dots unchanged |

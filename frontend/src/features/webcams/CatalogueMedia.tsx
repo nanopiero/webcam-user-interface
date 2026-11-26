@@ -1,9 +1,11 @@
+import { useI18n } from "../../i18n/I18nProvider";
 import { useEffect, useState } from "react";
 import { getSupplementaryProvider } from "../../api/client";
 import type { ProviderMedia } from "../../api/contracts";
 import ProviderLogo from "./ProviderLogo";
 
 export default function CatalogueMedia({ id, name, providerPageURL }: { id: string; name: string; providerPageURL?: string | null }) {
+  const { t } = useI18n();
   const [provider, setProvider] = useState<ProviderMedia | null>(null);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(0);
@@ -19,19 +21,19 @@ export default function CatalogueMedia({ id, name, providerPageURL }: { id: stri
   const media = available[Math.min(selected, available.length - 1)];
   const pageURL = provider?.page_url ?? providerPageURL;
   const failedMedia = () => { if (media) { setFailed(previous => [...previous, media.url]); setSelected(0); } };
-  return <section className="provider provider-preview" aria-label="Current supplementary provider view">
-    <div className="provider-heading"><h3>Current image</h3>
+  return <section className="provider provider-preview" aria-label={t("Current supplementary provider view")}>
+    <div className="provider-heading"><h3>{t("Current image")}</h3>
       <ProviderLogo urls={[pageURL, media?.url]} /></div>
-    {!provider && !error && <p className="muted small" role="status">Loading the provider view…</p>}
-    {error && <p className="muted small">{error}</p>}
-    {available.length > 1 && <label className="provider-selector">Provider view<select value={Math.min(selected, available.length - 1)} onChange={event => setSelected(Number(event.target.value))}>
-      {available.map((item, index) => <option key={item.url} value={index}>{index + 1} · {item.kind === "frame" ? "Player" : item.kind === "video" ? "Video" : "Image"}</option>)}
+    {!provider && !error && <p className="muted small" role="status">{t("Loading the provider view…")}</p>}
+    {error && <p className="muted small">{t(error)}</p>}
+    {available.length > 1 && <label className="provider-selector">{t("Provider view")}<select value={Math.min(selected, available.length - 1)} onChange={event => setSelected(Number(event.target.value))}>
+      {available.map((item, index) => <option key={item.url} value={index}>{index + 1} · {item.kind === "frame" ? t("Player") : item.kind === "video" ? t("Video") : t("Image")}</option>)}
     </select></label>}
-    {media?.kind === "image" && <a href={media.url} target="_blank" rel="noopener noreferrer"><img className="current-image" src={media.url} alt={`Provider view from ${name}`} onError={failedMedia} /></a>}
-    {media?.kind === "video" && <video className="current-video" src={media.url} aria-label={`Provider video from ${name}`} controls autoPlay muted playsInline onError={failedMedia} />}
-    {media?.kind === "frame" && <iframe className="current-player" title={`Provider player for ${name}`} src={media.url} sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen />}
-    {provider && !media && <p className="muted small">This provider view cannot be embedded. Use its original link below.</p>}
-    {media && media.url !== pageURL && <a className="provider-link" href={media.url} target="_blank" rel="noopener noreferrer">Open this provider view ↗</a>}
-    {pageURL && <a className="provider-link" href={pageURL} target="_blank" rel="noopener noreferrer">Open provider webcam ↗</a>}
+    {media?.kind === "image" && <a href={media.url} target="_blank" rel="noopener noreferrer"><img className="current-image" src={media.url} alt={t("Provider view from {value0}", { value0: name })} onError={failedMedia} /></a>}
+    {media?.kind === "video" && <video className="current-video" src={media.url} aria-label={t("Provider video from {value0}", { value0: name })} controls autoPlay muted playsInline onError={failedMedia} />}
+    {media?.kind === "frame" && <iframe className="current-player" title={t("Provider player for {value0}", { value0: name })} src={media.url} sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen />}
+    {provider && !media && <p className="muted small">{t("This provider view cannot be embedded. Use its original link below.")}</p>}
+    {media && media.url !== pageURL && <a className="provider-link" href={media.url} target="_blank" rel="noopener noreferrer">{t("Open this provider view ↗")}</a>}
+    {pageURL && <a className="provider-link" href={pageURL} target="_blank" rel="noopener noreferrer">{t("Open provider webcam ↗")}</a>}
   </section>;
 }

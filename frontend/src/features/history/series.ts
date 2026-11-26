@@ -1,4 +1,5 @@
 import type { DiagramMode, HistoryPayload, HistoryPoint, SnowThresholds } from "../../api/contracts";
+import type { Translator } from "../../i18n/core";
 
 export function mergeHistory(pages: HistoryPayload[]): HistoryPoint[] {
   const points = new Map<number, HistoryPoint>();
@@ -31,12 +32,13 @@ export function displayValue(value: number, ceiling: number, saturatedBand: numb
   return value > ceiling ? ceiling + saturatedBand * 0.65 : value;
 }
 
-export function snowClassLabel(value: number | null, thresholds: SnowThresholds = {}): string {
-  if (value == null) return "Not published";
+export function snowClassLabel(value: number | null, thresholds: SnowThresholds = {}, translate?: Translator): string {
+  const t = translate ?? ((message: string) => message);
+  if (value == null) return t("Not published");
   const category = snowCategory(value, thresholds);
-  if (category === null) return `Unrecognised class (${value})`;
-  return ["No snow", "Intermediate snow cover", "Undifferentiated snow", "High snow cover"][category]
-    + ([30, 31, 310].includes(value) ? " · uncertain" : "");
+  if (category === null) return translate ? translate("Unrecognised class ({value})", { value }) : `Unrecognised class (${value})`;
+  return t(["No snow", "Intermediate snow cover", "Undifferentiated snow", "High snow cover"][category])
+    + ([30, 31, 310].includes(value) ? ` · ${t("uncertain")}` : "");
 }
 
 export function snowCategory(value: number | null, thresholds: SnowThresholds = {}): 0 | 1 | 2 | 3 | null {

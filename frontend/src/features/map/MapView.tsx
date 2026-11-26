@@ -1,3 +1,4 @@
+import { useI18n } from "../../i18n/I18nProvider";
 import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { ExpressionSpecification, GeoJSONSource, Map as LibreMap } from "maplibre-gl";
@@ -45,6 +46,9 @@ interface Props {
 
 // One WebGL source for all sites; only the selected site uses interactive HTML.
 export default function MapView({ configuration, sites, allSites, parameter, altitudeBand, showObserved, showSupplementary, borders, selected, onClearSelection, onSelect, supplementary, allSupplementary, selectedSupplementary, onSelectSupplementary }: Props) {
+  const { t, language, locale } = useI18n();
+  const tRef = useRef(t);
+  tRef.current = t;
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<LibreMap | null>(null);
   const sitesRef = useRef(sites);
@@ -80,6 +84,8 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
         center: configuration.map.center,
         zoom: configuration.map.zoom,
         maxZoom: 18,
+        locale: { "NavigationControl.ZoomIn": tRef.current("Zoom in"), "NavigationControl.ZoomOut": tRef.current("Zoom out"),
+          "AttributionControl.ToggleAttribution": tRef.current("Toggle attribution"), "Map.Title": tRef.current("Map") },
         attributionControl: { compact: true },
         style: {
           version: 8,
@@ -227,14 +233,24 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
     focusedId.current = selection?.properties.id ?? null;
   }, [selected, selectedSupplementary, ready]);
 
+  useEffect(() => {
+    const element = container.current;
+    if (!element) return;
+    for (const [selector, label] of [[".maplibregl-ctrl-zoom-in", "Zoom in"], [".maplibregl-ctrl-zoom-out", "Zoom out"],
+      [".maplibregl-ctrl-attrib-button", "Toggle attribution"], [".maplibregl-canvas", "Map"]]) {
+      const control = element.querySelector<HTMLElement>(selector);
+      if (control) { control.title = t(label); control.setAttribute("aria-label", t(label)); }
+    }
+  }, [language, t, ready]);
+
   return <div className="map-wrap" aria-busy={!ready}>
-    <div ref={container} className="map" aria-label="Webcam observation map" />
-    <button className="map-home" title="Return to the initial map extent" onClick={() => map.current?.easeTo({
+    <div ref={container} className="map" aria-label={t("Webcam observation map")} />
+    <button className="map-home" title={t("Return to the initial map extent")} onClick={() => map.current?.easeTo({
       center: configuration.map.center, zoom: configuration.map.zoom, duration: 600,
-    })}>Reset view</button>
+    })}>{t("Reset view")}</button>
     {chooser && <WebcamChooser choices={chooser.choices} position={{ left: chooser.left, top: chooser.top }}
       onChoose={choose} onClose={() => setChooser(null)} />}
-    {ready && <div className="map-visible-count" aria-label="Sites in map view">{visibleSites.toLocaleString()} sites in view</div>}
-    {error && <div className="map-notice" role="status">{error}</div>}
+    {ready && <div className="map-visible-count" aria-label={t("Sites in map view")}>{t("{count} sites in view", { count: visibleSites.toLocaleString(locale) })}</div>}
+    {error && <div className="map-notice" role="status">{t(error)}</div>}
   </div>;
 }

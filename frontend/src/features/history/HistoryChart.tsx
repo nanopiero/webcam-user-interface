@@ -1,8 +1,9 @@
+import { usePresentation } from "../../shared/usePresentation";
+import { useI18n } from "../../i18n/I18nProvider";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Dygraph, { type dygraphs } from "dygraphs";
 import "dygraphs/dist/dygraph.css";
 import type { DiagramMode, FrontendConfiguration, HistoryPoint, Parameter } from "../../api/contracts";
-import { number, utc } from "../../shared/format";
 import { HIGH_SNOW_COLOUR } from "../map/icons";
 import { CHART_SERIES, prepareHistoryChart, SNOW_CATEGORIES } from "./chartData";
 import { observationPlotter } from "./chartPlotter";
@@ -21,6 +22,10 @@ interface Props {
 }
 
 export default function HistoryChart({ points, parameter, mode, start, end, mapTime, configuration, onResetPeriod }: Props) {
+  const { t, language, locale } = useI18n();
+  const { number, utc, PARAMETER_LABELS } = usePresentation();
+  const labelsRef = useRef({ t, number, locale });
+  labelsRef.current = { t, number, locale };
   const host = useRef<HTMLDivElement>(null), guide = useRef<HTMLDivElement>(null);
   const graph = useRef<Dygraph | null>(null);
   const mapTimeRef = useRef(mapTime);
@@ -61,18 +66,23 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
       highlightCircleSize: 0, strokeWidth: 0, rightGap: 10,
       showRangeSelector: false,
       axisLabelFontSize: 10, axisLineColor: "#bac9d1", gridLineColor: "#e7edf0",
-      ylabel: classes ? undefined : calibrated ? "Visibility (m)" : "Raw model value",
+      ylabel: classes ? undefined : labelsRef.current.t(calibrated ? "Visibility (m)" : "Raw model value"),
       axes: {
-        x: { pixelsPerLabel: 85, axisLabelWidth: 70 },
+        x: { pixelsPerLabel: 85, axisLabelWidth: 70, axisLabelFormatter: value => {
+          const span = instanceRange();
+          return new Intl.DateTimeFormat(labelsRef.current.locale, span <= 2 * 86400000
+            ? { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC" }
+            : { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(value));
+        } },
         y: { axisLabelWidth: classes ? 96 : 65,
-          ticker: classes ? () => [{ v: prepared.unavailable, label: "Unavailable" },
-            ...SNOW_CATEGORIES.map((label, v) => ({ v, label }))]
+          ticker: classes ? () => [{ v: prepared.unavailable, label: labelsRef.current.t("Unavailable") },
+            ...SNOW_CATEGORIES.map((label, v) => ({ v, label: labelsRef.current.t(label) }))]
             : (min, max, pixels, opts, instance, vals) => [
-              ...(prepared.unavailable >= min && prepared.unavailable <= max ? [{ v: prepared.unavailable, label: "Unavailable" }] : []),
+              ...(prepared.unavailable >= min && prepared.unavailable <= max ? [{ v: prepared.unavailable, label: labelsRef.current.t("Unavailable") }] : []),
               ...Dygraph.numericTicks(min, max, pixels, opts, instance, vals)
                 .filter(tick => tick.v > prepared.unavailable + (max - min) * 0.07),
             ],
-          axisLabelFormatter: value => calibrated && Number(value) > ceiling ? `>${number(ceiling, 0)}` : number(Number(value), calibrated ? 0 : 2),
+          axisLabelFormatter: value => calibrated && Number(value) > ceiling ? `>${labelsRef.current.number(ceiling, 0)}` : labelsRef.current.number(Number(value), calibrated ? 0 : 2),
         },
       },
       series: {
@@ -86,6 +96,10 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
       },
       drawCallback: drawGuide,
     };
+    function instanceRange() {
+      const [from, to] = graph.current?.xAxisRange() ?? [Date.parse(start), Date.parse(end)];
+      return to - from;
+    }
     const instance = new Dygraph(element, prepared.data, options);
     graph.current = instance;
     const observer = new ResizeObserver(() => instance.resize());
@@ -95,6 +109,9 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
 
   // The guide follows the map without recreating the graph or losing its zoom.
   useEffect(() => { graph.current?.updateOptions({}); }, [mapTime]);
+  useEffect(() => {
+    graph.current?.updateOptions({ ylabel: classes ? undefined : t(calibrated ? "Visibility (m)" : "Raw model value") });
+  }, [language, t, classes, calibrated]);
 
   function resetView() {
     graph.current?.resetZoom();
@@ -105,16 +122,16 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
   const outside = Number.isFinite(mapStamp) && (mapStamp < window[0] || mapStamp > window[1]);
 
   return <div className="history-chart">
-    <div className="chart-keys" aria-label="Chart legend">
-      <span><i className="chart-key map-time-key" />Map time: {utc(mapTime)}{outside && " · outside visible range"}</span>
-      {thresholdsVisible && <><span><i className="chart-key lower-threshold-key" />Lower snow threshold</span>
-        <span><i className="chart-key upper-threshold-key" />Upper snow threshold</span>
-        {!prepared.hasThresholds && <span>No thresholds published in this range</span>}</>}
-      <button className="quiet chart-reset" onClick={resetView} title="Reset zoom and Earlier/Later navigation">Reset view</button>
+    <div className="chart-keys" aria-label={t("Chart legend")}>
+      <span><i className="chart-key map-time-key" />{t("Map time:")}{" "}{utc(mapTime)}{outside && t(" · outside visible range")}</span>
+      {thresholdsVisible && <><span><i className="chart-key lower-threshold-key" />{t("Lower snow threshold")}</span>
+        <span><i className="chart-key upper-threshold-key" />{t("Upper snow threshold")}</span>
+        {!prepared.hasThresholds && <span>{t("No thresholds published in this range")}</span>}</>}
+      <button className="quiet chart-reset" onClick={resetView} title={t("Reset zoom and Earlier/Later navigation")}>{t("Reset view")}</button>
     </div>
     <div className="chart-viewport">
       <div ref={host} className="dygraph-chart" role="img" tabIndex={0}
-        aria-label={`${parameter} ${classes ? "categorical classes" : `${mode} prediction intervals`}, UTC. ${points.length} observations. Drag to zoom; use arrow keys to inspect observations.`}
+        aria-label={t("{value0} {value1}, UTC. {value2} observations. Drag to zoom; use arrow keys to inspect observations.", { value0: PARAMETER_LABELS[parameter], value1: t(classes ? "categorical classes" : mode === "raw" ? "raw prediction intervals" : "calibrated prediction intervals"), value2: points.length })}
         onDoubleClickCapture={event => {
           if (event.altKey || event.shiftKey) return;
           event.preventDefault(); event.stopPropagation(); resetView();
@@ -148,7 +165,7 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
     </div>
     <div className="chart-readout" aria-live="polite">
       {hovered ? <HistoryReadout point={hovered} parameter={parameter} mode={mode} />
-        : <span>The black vertical line marks the selected map date and time.</span>}
+        : <span>{t("The black vertical line marks the selected map date and time.")}</span>}
     </div>
   </div>;
 }
