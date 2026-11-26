@@ -17,6 +17,7 @@ export default function HistoryPanel({ diagram, configuration, mapTime, onClose 
   });
   const [draft, setDraft] = useState({ start: toUTCInput(range.start), end: toUTCInput(range.end) });
   const [preset, setPreset] = useState(String(Math.min(configuration.diagram.initial_days, configuration.diagram.max_days)));
+  const resetPeriod = useRef({ range, preset });
   const [showDates, setShowDates] = useState(false);
   const presets = [...new Set([1 / 24, 6 / 24, 1, 7, 30, 90, 366,
     Math.min(configuration.diagram.initial_days, configuration.diagram.max_days)])]
@@ -46,6 +47,7 @@ export default function HistoryPanel({ diagram, configuration, mapTime, onClose 
       const next = { start: fromUTCInput(start), end: fromUTCInput(end) };
       const days = (Date.parse(next.end) - Date.parse(next.start)) / 86400000;
       if (days <= 0 || days > configuration.diagram.max_days) throw new Error(`Choose an end after the start, within ${configuration.diagram.max_days} days.`);
+      resetPeriod.current = { range: next, preset: "custom" };
       setRange(next); setPreset("custom"); setError("");
     } catch (error) { setError(error instanceof Error ? error.message : "Invalid date range"); }
   }
@@ -54,6 +56,13 @@ export default function HistoryPanel({ diagram, configuration, mapTime, onClose 
     const end = new Date(Math.min(Date.now(), Date.parse(range.end) + direction * duration)).toISOString();
     const start = new Date(Date.parse(end) - duration).toISOString();
     setRange({ start, end }); setDraft({ start: toUTCInput(start), end: toUTCInput(end) });
+  }
+  function restorePeriod() {
+    const original = resetPeriod.current;
+    setRange(current => current.start === original.range.start && current.end === original.range.end ? current : original.range);
+    setPreset(original.preset);
+    setDraft({ start: toUTCInput(original.range.start), end: toUTCInput(original.range.end) });
+    setError("");
   }
   async function loadOlder() {
     if (!next) return;
@@ -83,6 +92,7 @@ export default function HistoryPanel({ diagram, configuration, mapTime, onClose 
         if (event.target.value === "custom") { setShowDates(true); return; }
         const end = diagram.at ?? new Date().toISOString();
         const start = new Date(Date.parse(end) - Number(event.target.value) * 86400000).toISOString();
+        resetPeriod.current = { range: { start, end }, preset: event.target.value };
         setRange({ start, end }); setDraft({ start: toUTCInput(start), end: toUTCInput(end) });
       }}><option value="custom">Custom</option>{presets.map(days => <option key={days} value={days}>{days < 1 ? `${Math.round(days * 24)} hours` : `${days} day${days > 1 ? "s" : ""}`}</option>)}</select></label>
       <button className="quiet" aria-expanded={showDates} onClick={() => setShowDates(value => !value)}>Dates</button>
@@ -96,7 +106,7 @@ export default function HistoryPanel({ diagram, configuration, mapTime, onClose 
     {error && <p className="error" role="alert">{error}</p>}
     {busy && !pages.length ? <p className="empty" role="status">Loading observations…</p> : <>
       <Suspense fallback={<p className="empty" role="status">Loading chart…</p>}>
-        <HistoryChart points={points} parameter={diagram.parameter} mode={mode} start={range.start} end={range.end} mapTime={mapTime} configuration={configuration} />
+        <HistoryChart points={points} parameter={diagram.parameter} mode={mode} start={range.start} end={range.end} mapTime={mapTime} configuration={configuration} onResetPeriod={restorePeriod} />
       </Suspense>
       <div className="chart-footer"><span>{range.start.slice(0, 10)} → {range.end.slice(0, 10)} UTC · {points.length.toLocaleString()} observations · {missing.toLocaleString()} {mode === "classes" ? "without a published snow class" : `without a ${mode} interval`}{!points.length ? " · No observations received in this range" : ""}</span>
         {next && <button disabled={busy} onClick={loadOlder}>{busy ? "Loading…" : "Load older observations"}</button>}</div>

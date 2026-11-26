@@ -17,9 +17,10 @@ interface Props {
   end: string;
   mapTime: string | null;
   configuration: FrontendConfiguration;
+  onResetPeriod: () => void;
 }
 
-export default function HistoryChart({ points, parameter, mode, start, end, mapTime, configuration }: Props) {
+export default function HistoryChart({ points, parameter, mode, start, end, mapTime, configuration, onResetPeriod }: Props) {
   const host = useRef<HTMLDivElement>(null), guide = useRef<HTMLDivElement>(null);
   const graph = useRef<Dygraph | null>(null);
   const mapTimeRef = useRef(mapTime);
@@ -103,6 +104,11 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
     const nextStart = Math.max(fullStart, Math.min(fullEnd - width, (left + right - width) / 2));
     instance.updateOptions({ dateWindow: [nextStart, nextStart + width] });
   }
+  function resetView() {
+    graph.current?.resetZoom();
+    setTooltip(null);
+    onResetPeriod();
+  }
   const mapStamp = mapTime ? Date.parse(mapTime) : NaN;
   const outside = Number.isFinite(mapStamp) && (mapStamp < window[0] || mapStamp > window[1]);
 
@@ -116,6 +122,10 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
     <div className="chart-viewport">
       <div ref={host} className="dygraph-chart" role="img" tabIndex={0}
         aria-label={`${parameter} ${classes ? "categorical classes" : `${mode} prediction intervals`}, UTC. ${points.length} observations. Drag to zoom; use arrow keys to inspect observations.`}
+        onDoubleClickCapture={event => {
+          if (event.altKey || event.shiftKey) return;
+          event.preventDefault(); event.stopPropagation(); resetView();
+        }}
         onPointerDown={() => setTooltip(null)}
         onPointerMove={event => {
           const instance = graph.current;
@@ -145,11 +155,11 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
     </div>
     <div className="chart-navigation"><div className="segmented" aria-label="Chart zoom">
       <button onClick={() => zoom(0.5)}>Zoom in</button><button onClick={() => zoom(2)}>Zoom out</button>
-      <button onClick={() => graph.current?.resetZoom()}>Reset zoom</button>
-    </div><span title="Double-click to reset; pinch on touchscreens">Drag to zoom · Shift-drag to pan</span></div>
+      <button onClick={resetView} title="Reset zoom and Earlier/Later navigation">Reset view</button>
+    </div><span title="Double-click resets zoom and Earlier/Later navigation; pinch on touchscreens">Drag to zoom · Shift-drag to pan</span></div>
     <div className="chart-readout" aria-live="polite">
       {hovered ? <HistoryReadout point={hovered} parameter={parameter} mode={mode} />
-        : <span>Hover {classes ? "a class dot" : "an interval"} for exact values · Arrow keys inspect observations · UTC</span>}
+        : <span>The black vertical line marks the selected map date and time.</span>}
     </div>
   </div>;
 }

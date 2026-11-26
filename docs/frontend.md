@@ -117,8 +117,11 @@ in the right panel and follow the active filters.
   Intervals are discrete vertical bars; missing results use a labelled **Unavailable** row and are
   never filled or interpolated. Histories use [Dygraphs](https://dygraphs.com/) with drag-to-zoom,
   Shift-drag panning, touch pinch and explicit **Zoom in**, **Zoom out**, and
-  **Reset zoom** buttons. Zoom/pan operate on downloaded data without map/history requests;
-  double-click resets the view. Move over a chart or focus it and use arrow/Home/End keys for the
+  **Reset view** buttons. Zoom/pan operate on downloaded data without map/history requests.
+  Double-click or **Reset view** clears zoom/pan and cancels Earlier/Later moves, returning to the
+  last explicitly selected preset/custom period (or the initial period if none was selected).
+  The idle readout explains that the black vertical line marks the selected map date and time.
+  Move over a chart or focus it and use arrow/Home/End keys for the
   numerical readout. Hovering the actual interval opens a tooltip alongside it, showing the
   original bounds and, for calibrated visibility, the published centre. Hit-testing follows the
   complete painted bar, including capped bounds and observations at the same timestamp.
