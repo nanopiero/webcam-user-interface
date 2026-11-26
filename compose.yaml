@@ -1,0 +1,85 @@
+name: webcam-ui
+
+x-backend: &backend
+  image: webcam-ui-backend:local
+  build:
+    context: .
+    dockerfile: deploy/Dockerfile.backend
+    target: backend
+  user: "${UI_RUN_UID:-10001}:${UI_RUN_GID:-10001}"
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  restart: unless-stopped
+  stop_grace_period: 30s
+  pids_limit: 128
+  depends_on:
+    postgres:
+      condition: service_healthy
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  postgres:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${UI_DATABASE_NAME:-webcam_ui}"
+      POSTGRES_USER: "${UI_DATABASE_USER:-webcam_ui}"
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    volumes:
+      - "${UI_DB_DATA_DIRECTORY:-/data/db_ui}:/var/lib/postgresql/data:Z"
+      - ./.secrets/db_password:/run/secrets/db_password:ro,z
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+
+  api:
+    <<: *backend
+    image: webcam-ui-web:local
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.backend
+      target: web
+    command: [serve]
+    ports:
+      - "127.0.0.1:8080:${UI_API_PORT:-8080}"
+    volumes:
+      - "${UI_BACKEND_CONFIG:-./config/backend.local.toml}:/app/config/backend.toml:ro,z"
+      - ./config/frontend.local.json:/app/config/frontend.json:ro,z
+      - "${UI_CATALOGUE_DIRECTORY:-./var/catalogue}:/app/catalogue:ro,z"
+      - ./.secrets/db_password:/run/secrets/db_password:ro,z
+      - ./.secrets/admin_password_hash:/run/secrets/admin_password_hash:ro,z
+      - ./.secrets/session_secret:/run/secrets/session_secret:ro,z
+      - ./.secrets/wind_api_key:/run/secrets/windy_api_key:ro,z
+    healthcheck:
+      test: [CMD, python, -m, webcam_ui.cli, health-api]
+      interval: 15s
+      timeout: 8s
+      retries: 5
+      start_period: 20s
+
+  listener:
+    <<: *backend
+    command: [listen]
+    volumes:
+      - "${UI_BACKEND_CONFIG:-./config/backend.local.toml}:/app/config/backend.toml:ro,z"
+      - ./.secrets/db_password:/run/secrets/db_password:ro,z
+      - ./.secrets/mosquitto_sub:/run/secrets/mqtt_credentials:ro,z
+      - ./.secrets/esoh-ca.crt:/run/secrets/esoh-ca.crt:ro,z
+    healthcheck:
+      test: [CMD, python, -m, webcam_ui.cli, health-listener]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 30s

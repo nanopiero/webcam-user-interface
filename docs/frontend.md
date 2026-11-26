@@ -1,0 +1,177 @@
+# Frontend
+
+The production API serves the built React application at `/`, assets at `/assets/`, and JSON
+under `/api/`. Requests use the same origin as the page, so the existing Nginx HTTPS/viewer
+authentication covers both. No browser token or separate frontend server is required.
+
+## Using the map
+
+The header shows `EUMETNET · Snow & visibility · ROI: <configured name>`. The left panel places
+the webcam/qualification/display toggles first, **Show bordering webcams** below **Additional webcams**,
+then border overlays and altitude controls. WEOW and additional webcam counts sit above the legend
+in the right panel and follow the active filters.
+
+- **Show bordering webcams** uses `filters.allowed_countries` in the backend configuration.
+  Startup requests only `roi.countries` (France for this deployment). **Show bordering webcams**
+  loads all the other configured countries together through one checkbox. Turning it off returns to
+  the ROI countries. Neighbours load on first selection and can then be hidden/shown from cache.
+  Cameras without published country remain excluded from these country-scoped views.
+  **Refresh** and automatic refresh request every selected country, retaining the country and altitude
+  selections. Supplementary black dots have no published country and keep their independent toggle;
+  the catalogue is also refreshed and restricted to the deployment bounding box.
+- Switch between **Snow** and **Visibility**. Small white dots indicate no recent observation
+  for the selected parameter, including cameras that have never sent that parameter. In snow mode,
+  recent unqualified observations use normal-sized white discs; unknown qualification counts as
+  unqualified. Observation availability is independent of the provider image: small white dots
+  remain clickable and can show current images. The legend uses the reference administrative UI's
+  snow and fog palettes. An uncertainty ring is shown only when the published class supports it.
+- **Qualified scenes only** starts enabled in both views. Snow qualification is read from the
+  published status, independently of the snow class. Recent unqualified or unknown results remain as
+  white discs, with no uncertainty ring. Turning the toggle off loads their published snow colours.
+  The camera positions stay available. Visibility cameras
+  are currently assumed qualified (2), so the toggle leaves visibility results unchanged.
+  Refresh retains the qualification, country and altitude selections. Webcam metadata shows
+  qualification; stored histories retain their published predictions and qualification codes.
+- Select a site on the map, or enter a name/platform in the compact search and select a result.
+  Sites are grouped by published platform identity. A group with several views uses a disc 50%
+  larger than a single-camera marker, following the admin UI's 9:6 size ratio. Clicking the group
+  expands its individually clickable cameras; overlapping views spread around the site with
+  short, thick dashed connecting lines (a 17-pixel minimum spread radius). Choose a camera marker
+  or a numbered view button to load its provider image. A group containing only cameras without
+  recent observations stays a small white dot; expansion shows each view's own availability.
+  The details popup has no repeated camera dropdown; use the expanded markers or numbered buttons
+  to switch views. Click the map background or **Collapse webcam group**
+  to collapse it. A single-camera site opens its image immediately.
+  The left panel contains altitude controls rather than a full webcam list: **All altitudes**,
+  **Below 500 m**, **500–1,000 m**, **Above 1,000 m**. The middle band includes both endpoints.
+  Both WEOW and supplementary points use the filter; unknown altitudes appear under All.
+- WEOW icons use 65% of their original width/height, with native one-pixel outlines that stay
+  smooth when zooming; the small black dots and legend swatches keep
+  their sizes. **WEOW webcams**, **Additional webcams**, **Hide white markers**, altitude controls
+  and search operate on the downloaded camera data. They update cached map filters/visibility
+  without requesting webcam data or rebuilding the map. Manual/automatic refresh and changing
+  the observation parameter/time still fetch fresh data.
+- **Borders** has a national-border toggle and one **French regions & departments** toggle, which
+  shows/hides regions in red and departments in thinner black lines together. French administrative
+  controls and their datasets are available only when `roi.name`
+  is **France**, independently of the country checkboxes. Each applicable dataset loads once. Repeated show/hide changes only the layer's
+  visibility. These overlay controls do not remove faint lines baked into the raster basemap.
+- **Latest** refreshes every 30 seconds when auto-refresh is enabled. **View time** selects the
+  latest observation available as of the given UTC time. The freshness window is
+  `api.prediction_max_age_minutes`, default **15 minutes**, measured from the observation's
+  `download_timestamp` (`properties.datetime` in MQTT). At that age, every classification or
+  unqualified white disc becomes a small white dot for that parameter. Acquisition, processing,
+  publication and UI reception times never extend freshness. Historical map views apply the same
+  age limit relative to the selected map time. Once observations have stopped for 15 minutes,
+  the latest view contains only small white WEOW dots and small black supplementary dots.
+  The details panel explicitly labels its numerical summary as the latest received observation;
+  history can end at the selected map time.
+- The webcam popup puts **Latest prediction** first in its observation section, followed by three
+  UTC clocks: **Download in E-SOH** (`download_timestamp`), **Processed** (`processing_timestamp`),
+  and **UI backend reception** (`received_at`). Missing times remain explicitly unavailable.
+- Open snow and visibility histories independently. Snow distinguishes no snow (grey), intermediate
+  cover (light blue), undifferentiated snow (blue), and **High snow cover** (solid vivid violet).
+  High cover requires a published snow class of `1`/`31` and both thresholds on that same observation.
+  Older observations without thresholds stay undifferentiated. Unavailable
+  classes are white. No snow-coverage percentage or class is inferred from a raw model interval.
+  The raw model interval remains available through a separate tab, with lower/upper thresholds
+  drawn as black/violet ticks at each observation time. The readout and webcam metadata show both
+  published thresholds; missing thresholds remain explicitly unavailable.
+  Each panel keeps its selected webcam while
+  the map selection changes. Choose a preset or custom UTC range, up to the configured limit.
+  **Load older observations** follows continuation pages when a range exceeds the server page size.
+- Raw intervals are model outputs; visibility raw values are not metres. **Calibrated · m** shows
+  published visibility bounds and the published centre, when supplied. No midpoint is inferred.
+  Intervals are vertical bars; missing intervals are marked below the axis, never filled or
+  interpolated. Move over a chart or focus it and use arrow/Home/End keys for the numerical readout.
+- Selecting a webcam automatically loads its current provider image at the top of its details.
+  **Reload image** resolves a fresh current URL; **Open provider page** opens the original resource.
+  Windy URL resolution and Skaping public-page image metadata resolution happen on the backend.
+  The browser never receives the Windy API key. Providers
+  may prohibit embedding or expose only HTTP images; the panel offers an external link when
+  embedding is unavailable. Images are not archived by this application.
+- The vertical band on the right explains marker colours. Optional supplementary CSV webcams appear
+  as small black dots and can be searched and selected. The legend calls them **Additional webcams**.
+  Their popup shows source metadata/provider links and explains that they have no WEOW observations.
+  See [supplementary webcams](supplementary-webcams.md).
+  Published uMap image, video and iframe connection methods are used automatically. Windy and
+  Skaping current images are resolved on the backend for supplementary webcams too. If a provider
+  prevents embedding, the original source link remains available.
+- **Admin** opens the independent application login. Once signed in, select a webcam and supply
+  an optional reason to hide it. Restore it through **Administrator → Hidden webcams**. Hiding
+  changes only this map; ingestion and historical records continue unchanged.
+
+## Configuration
+
+Copy `config/frontend.example.json` to the ignored `config/frontend.local.json` (initialization
+does this automatically). It is mounted read-only and loaded on page start; reload the browser
+after editing it. It contains no credentials.
+
+Countries are configured once in `config/backend.local.toml` under `filters.allowed_countries`.
+The `[roi]` section sets the ROI name and initial country/countries. The API adds both settings to
+`/frontend-config.json`; do not duplicate them in the frontend JSON.
+See [deploying for another country](backend-operations.md#configure-before-starting) for an example.
+
+| Setting | Purpose |
+| --- | --- |
+| `map.center`, `map.zoom` | Initial Bourges/France view; independent of backend geographic filtering |
+| `map.basemap` | Raster tile URL(s), visible attribution and provider maximum zoom |
+| `map.marker_scale` | WEOW icon width/height multiplier; default 0.65, black dots unchanged |
+| `map.borders` | Initial overlay visibility; French regions and departments are enabled together if either flag is true |
+| `default_parameter`, `parameters` | Initial mode and offered observation modes |
+| `pie_sector_limit` | Maximum displayed tied-class pie sectors (backend also caps at 12) |
+| `diagram.initial_days`, `diagram.max_days` | Initial history span and maximum selectable span |
+| `visibility_display.ceiling_metres` | Display ceiling for calibrated visibility charts |
+| `visibility_display.saturated_band_metres` | Display band for values above that ceiling |
+
+The original interval/centre values remain unchanged by the chart display ceiling. The history
+API enforces its own maximum range independently. The default OpenStreetMap tile service needs
+Internet access from the viewer's browser. Keep its attribution visible and follow its
+[tile usage policy](https://operations.osmfoundation.org/policies/tiles/); configure another
+provider when deployment traffic or provider terms require it. There is no offline tile prefetch.
+
+## Code and development
+
+`src/app` composes the page and owns selection/time state. `src/api` is the only HTTP layer.
+Each feature directory owns its own rendering and local state. `history/series.ts` contains pure
+history merging and value interpretation. Reference palettes/sprites are isolated in `map/icons.ts`;
+scene, calibration-management and image-archive controls are intentionally absent.
+`map/countries.ts` and `CountryFilter.tsx` own country labels, counts and selection controls.
+`map/roi.ts` is the administrative border profile registry; add other teams' ROI layers there.
+`map/expansion.ts` lays out overlapping cameras in screen pixels without changing their published
+coordinates. Group expansion uses the already downloaded cameras and adds no observation request.
+`map/useMapData.ts` owns scoped loading/refresh and `map/cache.ts` merges refreshed countries,
+including removals, while retaining hidden cached countries. Browser requests bypass the HTTP cache.
+`map/presentation.ts` computes country/altitude-specific grouped classes from cached cameras.
+Country selection updates the cached map source; altitude and other display controls update
+filters/icon selection. Neither recreates the map or requests observation data. Border snapshots
+and provenance are documented in
+[`map/data/README.md`](../frontend/src/features/map/data/README.md).
+The MapLibre worker is bundled and served from the application origin, following the
+[MapLibre Vite installation instructions](https://maplibre.org/maplibre-gl-js/docs/#installation).
+
+With Node 22.22.2 or newer:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+The development server proxies `/api/` and `/frontend-config.json` to localhost:8080. Use the
+HTTPS production origin to exercise real administrator sessions. Production uses the Docker
+`web` build target, copies only compiled assets into the Python runtime, and keeps the API port
+bound to localhost. A backend-only build still exposes the collection API for deployment staging.
+
+```bash
+npm run build
+npm test
+npx playwright install chromium
+UI_TEST_BASE_URL=http://127.0.0.1:8080 npm run test:browser
+```
+
+The browser checks require a populated observation database. They read the live map/history,
+check desktop/mobile layouts, and mock administrative requests so they never hide a live webcam.
+Backend integration tests separately verify real authentication, CSRF and blacklist persistence
+against disposable PostgreSQL schemas. Browser screenshots and traces stay in ignored
+`frontend/test-results/`; they are not public repository fixtures.

@@ -1,0 +1,77 @@
+# Copy with `webcam-ui init`. Keep real infrastructure details in backend.local.toml.
+# Secret paths refer to read-only container mounts, not secret values.
+[database]
+host = "postgres"
+port = 5432
+name = "webcam_ui"
+user = "webcam_ui"
+password_file = "/run/secrets/db_password"
+host_data_directory = "/data/db_ui"
+pool_size = 5
+connect_timeout_seconds = 5
+statement_timeout_seconds = 15
+
+[mqtt]
+host = "mqtt.example.invalid"
+port = 8883
+topics = ["eu.eumetnet/+/+"]
+client_id = "webcam-ui-observations"
+qos = 1
+ca_file = "/run/secrets/esoh-ca.crt"
+credentials_file = "/run/secrets/mqtt_credentials"
+keepalive_seconds = 60
+maximum_payload_bytes = 1048576
+reconnect_min_seconds = 2
+reconnect_max_seconds = 60
+metrics_port = 9090
+
+[roi]
+# The ROI selects the initial countries and the available administrative border profile.
+name = "France"
+countries = ["FR"]
+
+[filters]
+# ROI country and bordering countries offered by the optional border-webcam toggle.
+allowed_countries = ["FR", "ES", "IT", "DE", "CH", "LU", "BE"]
+
+[filters.bounding_box]
+# Applied to both incoming observations and map reads of previously stored webcams.
+enabled = true
+west = -6.0
+south = 41.0
+east = 10.0
+north = 52.0
+
+[auth]
+username = "admin"
+password_hash_file = "/run/secrets/admin_password_hash"
+session_secret_file = "/run/secrets/session_secret"
+session_seconds = 28800
+allow_development_credentials = false
+login_attempts_per_minute = 10
+
+[providers]
+windy_api_key_file = "/run/secrets/windy_api_key"
+current_images_enabled = true
+cache_seconds = 240
+maximum_cached_cameras = 1024
+request_timeout_seconds = 10
+
+[api]
+host = "0.0.0.0"
+port = 8080
+frontend_config_file = "/app/config/frontend.json"
+frontend_dist_directory = "/app/frontend/dist"
+maximum_map_cameras = 50000
+maximum_history_points = 10000
+maximum_history_days = 366
+# After this age from the observation/download time, use a small white map dot.
+prediction_max_age_minutes = 15
+
+# Read-only supplementary map points. Exporter and CSV can live outside this repository.
+[supplementary_webcams]
+enabled = false
+csv_file = "/app/catalogue/umap-webcams.csv"
+host_directory = "../var/catalogue"
+minimum_distance_metres = 250.0
+maximum_rows = 50000

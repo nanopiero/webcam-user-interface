@@ -1,0 +1,9 @@
+[Unit]
+Description=Renew webcam HTTPS certificate and reload Nginx
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/certbot/bin/certbot renew --cert-name webcam-ui --quiet --deploy-hook "/usr/sbin/nginx -t && /usr/bin/systemctl reload nginx"

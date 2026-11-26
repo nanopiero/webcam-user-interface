@@ -1,0 +1,18 @@
+{
+  "map": {
+    "center": [2.398, 47.084],
+    "zoom": 5.5,
+    "marker_scale": 0.65,
+    "borders": {"national": true, "regions": false, "departments": false},
+    "basemap": {
+      "tiles": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      "attribution": "© OpenStreetMap contributors",
+      "maxzoom": 19
+    }
+  },
+  "default_parameter": "snow",
+  "parameters": ["snow", "visibility"],
+  "pie_sector_limit": 12,
+  "diagram": {"initial_days": 1, "max_days": 366},
+  "visibility_display": {"ceiling_metres": 15000, "saturated_band_metres": 1000}
+}
