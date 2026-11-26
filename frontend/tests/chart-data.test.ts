@@ -24,14 +24,14 @@ describe("Dygraphs published history data", () => {
     expect(points[0].upper).toBe(-2);
   });
 
-  it("uses a separate numeric threshold scale for categorical classes, never a snow percentage", () => {
+  it("uses thresholds to distinguish the categorical classes without plotting threshold series", () => {
     const points = [point(1), point(2, { snow_threshold_low: -20, snow_threshold_high: 0 })];
     const chart = prepareHistoryChart(points, "snow", "classes", configuration, start, end);
     expect(chart.data[chart.pointRows.get(1)!][1]).toBe(2);
     expect(chart.data[chart.pointRows.get(2)!][1]).toBe(3);
     expect(chart.valueRange).toEqual([-1, 3.5]);
-    expect(chart.thresholdRange[0]).toBeLessThan(-20);
-    expect(chart.thresholdRange[1]).toBeGreaterThan(0);
+    expect(chart.thresholdsVisible).toBe(false);
+    expect(chart.data.every(row => row.length === 3)).toBe(true);
   });
 
   it("preserves published calibrated centres and uses an unavailable row without fabricating bounds", () => {

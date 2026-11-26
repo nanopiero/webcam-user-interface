@@ -13,6 +13,6 @@
   "default_parameter": "snow",
   "parameters": ["snow", "visibility"],
   "pie_sector_limit": 12,
-  "diagram": {"initial_days": 1, "max_days": 366},
+  "diagram": {"initial_days": 7, "max_days": 366},
   "visibility_display": {"ceiling_metres": 15000, "saturated_band_metres": 1000}
 }

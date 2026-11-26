@@ -90,10 +90,9 @@ test("high snow is solid vivid violet in single and grouped markers, metadata an
   const chart = history.getByRole("img");
   await chart.focus(); await page.keyboard.press("Home");
   await expect(history.locator(".chart-readout")).toContainText("Class: Undifferentiated snow");
-  await expect(history.locator(".chart-readout")).toContainText("Upper snow threshold: Not supplied");
+  await expect(history.locator(".chart-readout")).not.toContainText("snow threshold:");
   await page.keyboard.press("ArrowRight");
   await expect(history.locator(".chart-readout")).toContainText("Class: High snow cover");
-  await expect(history.locator(".chart-readout")).toContainText("Upper snow threshold: 0");
   await page.keyboard.press("End");
   await expect(history.locator(".chart-readout")).toContainText("Class: High snow cover · uncertain");
   await page.screenshot({ path: "test-results/high-snow-classes.png", fullPage: true });

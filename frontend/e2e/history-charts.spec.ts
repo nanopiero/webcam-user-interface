@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-async function chartFixture(page: Page, empty = false) {
+async function chartFixture(page: Page, empty = false, olderDay = false) {
   const now = Math.floor(Date.now() / 60000) * 60000;
   const at = new Date(now).toISOString();
   const stamps = [8, 6, 4, 2, 1, 0.5].map(hours => new Date(now - hours * 3600000).toISOString());
@@ -15,6 +15,7 @@ async function chartFixture(page: Page, empty = false) {
     { ...base, lower: null, upper: null },
     { ...base, lower: null, upper: null, snow_class: 10, snow_threshold_low: 0, snow_threshold_high: 1 },
   ].map((point, index) => ({ ...point, id: index + 1, t: stamps[index] }));
+  if (olderDay) snow.push({ ...base, id: 7, t: new Date(now - 36 * 3600000).toISOString(), snow_class: 10 });
   const visibility = [
     { ...base, calibrated_lower: 1000, calibrated_upper: 3000, calibrated_center: 1800 },
     { ...base },
@@ -24,6 +25,7 @@ async function chartFixture(page: Page, empty = false) {
     { ...base, calibrated_lower: 0, calibrated_upper: 1000, calibrated_center: 0 },
   ].map((point, index) => ({ ...point, id: index + 1, t: stamps[index] }));
   let historyRequests = 0;
+  const requestedRanges: { start: string; end: string }[] = [];
   await page.route("**/frontend-config.json", async route => {
     const configuration = await (await route.fetch()).json();
     await route.fulfill({ json: { ...configuration, map: { ...configuration.map, center: [2, 47], zoom: 5.5 } } });
@@ -42,7 +44,10 @@ async function chartFixture(page: Page, empty = false) {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith("/history")) {
       historyRequests++;
-      const points = empty ? [] : url.searchParams.get("parameter") === "snow" ? snow : visibility;
+      const start = url.searchParams.get("start")!, end = url.searchParams.get("end")!;
+      requestedRanges.push({ start, end });
+      const points = (empty ? [] : url.searchParams.get("parameter") === "snow" ? snow : visibility)
+        .filter(point => Date.parse(point.t) >= Date.parse(start) && Date.parse(point.t) <= Date.parse(end));
       return route.fulfill({ json: { processing_stream_id: "chart-camera", parameter: url.searchParams.get("parameter"),
         intervals: points.filter(point => point.lower != null), without_raw_interval: points.filter(point => point.lower == null),
         truncated: false, next_cursor: null } });
@@ -57,11 +62,31 @@ async function chartFixture(page: Page, empty = false) {
   await page.getByRole("checkbox", { name: "Auto · 30 s" }).uncheck();
   await page.getByRole("searchbox", { name: "Find a webcam" }).fill("chart-site");
   await page.getByLabel("Webcam search results").getByRole("button").click();
-  return { at, stamps, requests: () => historyRequests };
+  return { at, stamps, requestedRanges, requests: () => historyRequests };
 }
 
 async function windowOf(chart: Locator) {
   return chart.evaluate(element => [Number((element as HTMLElement).dataset.windowStart), Number((element as HTMLElement).dataset.windowEnd)]);
+}
+
+async function hoverPaintedInterval(page: Page, chart: Locator, calibrated = false) {
+  await chart.scrollIntoViewIfNeeded();
+  const pixel = await chart.evaluate((element, calibrated) => {
+    const canvas = element.querySelector("canvas")!, pixels = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
+    for (let x = 0; x < canvas.width; x++) {
+      const hits: number[] = [];
+      for (let y = 0; y < canvas.height; y++) {
+        const offset = (y * canvas.width + x) * 4, [r, g, b] = pixels.slice(offset, offset + 3);
+        if (calibrated ? r > g + 30 && g > b + 30 : b > r + 50 && g > r + 30) hits.push(y);
+      }
+      if (hits.length > 5) return { x: x * canvas.clientWidth / canvas.width,
+        y: ((hits[0] + hits.at(-1)!) / 2) * canvas.clientHeight / canvas.height };
+    }
+    return null;
+  }, calibrated);
+  expect(pixel).not.toBeNull();
+  const box = (await chart.boundingBox())!;
+  await page.mouse.move(box.x + pixel!.x, box.y + pixel!.y);
 }
 
 test("Dygraphs snow classes, raw thresholds, zoom and map-time guide use published history without extra requests", async ({ page }) => {
@@ -72,15 +97,21 @@ test("Dygraphs snow classes, raw thresholds, zoom and map-time guide use publish
   const chart = history.getByRole("img");
   await expect(history.locator(".chart-footer")).toContainText("6 observations");
   await expect(chart.locator("canvas").first()).toBeVisible();
-  await expect(chart.locator(".dygraph-y2label")).toHaveText("Thresholds (raw)");
+  await expect(chart.locator(".dygraph-y2label")).toHaveCount(0);
+  await expect(history.locator(".chart-keys")).not.toContainText("snow threshold");
+  await expect(chart.locator(".dygraph-rangesel-zoomhandle")).toHaveCount(0);
+  expect((await chart.boundingBox())!.height).toBeLessThan(180);
+  const mapBox = (await page.locator(".map-wrap").boundingBox())!;
+  const chartBox = (await chart.boundingBox())!;
+  expect(mapBox.y).toBeGreaterThanOrEqual(0);
+  expect(chartBox.y + chartBox.height).toBeLessThan(1000);
   await expect(history.locator(".chart-map-time")).toBeVisible();
   await chart.focus(); await page.keyboard.press("Home");
   await expect(history.locator(".chart-readout")).toContainText("Class: Undifferentiated snow");
   await page.keyboard.press("ArrowRight");
-  await expect(history.locator(".chart-readout")).toContainText("Upper snow threshold: Not supplied");
+  await expect(history.locator(".chart-readout")).not.toContainText("snow threshold:");
   await page.keyboard.press("ArrowRight");
   await expect(history.locator(".chart-readout")).toContainText("Class: High snow cover");
-  await expect(history.locator(".chart-readout")).toContainText("Upper snow threshold: 0");
   await page.screenshot({ path: "test-results/dygraphs-snow-classes.png", fullPage: true });
   const original = await windowOf(chart), span = original[1] - original[0];
   await history.getByRole("button", { name: "Zoom in", exact: true }).click();
@@ -121,15 +152,21 @@ test("Dygraphs raw/calibrated visibility preserves exact centres, missing values
   const history = page.getByRole("article").filter({ hasText: "Visibility history" });
   const chart = history.getByRole("img");
   await expect(chart.locator("canvas").first()).toBeVisible();
+  await hoverPaintedInterval(page, chart);
+  await expect(page.getByRole("tooltip")).toContainText("Interval: -4 – -2");
+  await expect(page.getByRole("tooltip").getByText(/^Interval:/)).toHaveText("Interval: -4 – -2");
   await chart.focus(); await page.keyboard.press("Home");
   await expect(history.locator(".chart-readout")).toContainText("Interval: -4 – -2");
   await history.getByRole("button", { name: "Calibrated · m" }).click();
+  await hoverPaintedInterval(page, chart, true);
+  await expect(page.getByRole("tooltip")).toContainText("Interval: 1,000 – 3,000 m");
+  await expect(page.getByRole("tooltip")).toContainText("Published centre: 1,800 m");
   await chart.focus(); await page.keyboard.press("Home");
   await expect(history.locator(".chart-readout")).toContainText("Published centre: 1,800 m");
   await page.keyboard.press("ArrowRight");
   await expect(history.locator(".chart-readout")).toContainText("Interval: Not published");
   await page.keyboard.press("ArrowRight");
-  await expect(history.locator(".chart-readout")).toContainText("Published centre: Not supplied m");
+  await expect(history.locator(".chart-readout")).toContainText("Published centre: Not supplied");
   await page.keyboard.press("ArrowRight");
   await expect(history.locator(".chart-readout")).toContainText("20,000 – 90,000 m");
   await expect(history.locator(".chart-readout")).toContainText("Published centre: 45,000 m");
@@ -149,17 +186,39 @@ test("Dygraphs raw/calibrated visibility preserves exact centres, missing values
   expect(errors).toEqual([]);
 });
 
+test("seven days load initially and Earlier/Later retrieve the preceding day", async ({ page }) => {
+  const fixture = await chartFixture(page, false, true);
+  await page.getByRole("button", { name: "Open snow history" }).click();
+  const history = page.getByRole("article").filter({ hasText: "Snow history" });
+  await expect(history.getByRole("combobox", { name: "History time range" })).toHaveValue("7");
+  await expect(history.locator(".chart-footer")).toContainText("7 observations");
+  expect(Date.parse(fixture.requestedRanges[0].end) - Date.parse(fixture.requestedRanges[0].start)).toBe(7 * 86400000);
+  await expect(history.getByLabel("From (UTC)")).toHaveCount(0);
+  await history.getByRole("combobox", { name: "History time range" }).selectOption("1");
+  await expect(history.locator(".chart-footer")).toContainText("6 observations");
+  await history.getByRole("button", { name: "Earlier period" }).click();
+  await expect(history.locator(".chart-footer")).toContainText("1 observations");
+  await history.getByRole("img").focus(); await page.keyboard.press("Home");
+  await expect(history.locator(".chart-readout")).toContainText("Class: Intermediate snow cover");
+  await history.getByRole("button", { name: "Later period" }).click();
+  await expect(history.locator(".chart-footer")).toContainText("6 observations");
+  await history.getByRole("button", { name: "Dates", exact: true }).click();
+  await expect(history.getByLabel("From (UTC)")).toBeVisible();
+  expect(fixture.requests()).toBe(4);
+});
+
 test("empty Dygraphs histories keep the map-time guide and zoom controls without inventing results", async ({ page }) => {
   const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
   await chartFixture(page, true);
   await page.getByRole("button", { name: "Open snow history" }).click();
   const history = page.getByRole("article").filter({ hasText: "Snow history" });
   await expect(history.locator(".chart-footer")).toContainText("0 observations");
-  await expect(history.locator(".chart-keys")).toContainText("No thresholds published");
+  await expect(history.locator(".chart-keys")).not.toContainText("snow threshold");
   await expect(history.locator(".chart-map-time")).toBeVisible();
   await history.getByRole("button", { name: "Zoom in", exact: true }).click();
   await history.getByRole("button", { name: "Reset zoom", exact: true }).click();
   await history.getByRole("button", { name: "Raw model interval" }).click();
+  await expect(history.locator(".chart-keys")).toContainText("No thresholds published");
   await expect(history.getByRole("img").locator("canvas").first()).toBeVisible();
   expect(errors).toEqual([]);
 });

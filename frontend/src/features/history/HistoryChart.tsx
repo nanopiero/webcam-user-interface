@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Dygraph, { type dygraphs } from "dygraphs";
 import "dygraphs/dist/dygraph.css";
 import type { DiagramMode, FrontendConfiguration, HistoryPoint, Parameter } from "../../api/contracts";
-import { interval, number, utc } from "../../shared/format";
+import { number, utc } from "../../shared/format";
 import { HIGH_SNOW_COLOUR } from "../map/icons";
 import { CHART_SERIES, prepareHistoryChart, SNOW_CATEGORIES } from "./chartData";
 import { observationPlotter } from "./chartPlotter";
-import { snowClassLabel } from "./series";
+import { hitHistoryObservation } from "./chartHover";
+import HistoryReadout from "./HistoryReadout";
 
 interface Props {
   points: HistoryPoint[];
@@ -25,17 +26,18 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
   mapTimeRef.current = mapTime;
   const selected = useRef<number | null>(null);
   const [hovered, setHovered] = useState<HistoryPoint | null>(null);
+  const [tooltip, setTooltip] = useState<{ left: number; top: number } | null>(null);
   const [window, setWindow] = useState<[number, number]>([Date.parse(start), Date.parse(end)]);
   const prepared = useMemo(() => prepareHistoryChart(points, parameter, mode, configuration, start, end),
     [points, parameter, mode, configuration, start, end]);
-  const classes = mode === "classes", snow = parameter === "snow", calibrated = mode === "calibrated";
-  const thresholdAxis = classes && prepared.hasThresholds;
+  const classes = mode === "classes", calibrated = mode === "calibrated";
+  const { thresholdsVisible } = prepared;
   const { ceiling_metres: ceiling } = configuration.visibility_display;
 
   useEffect(() => {
     const element = host.current;
     if (!element) return;
-    selected.current = null; setHovered(null);
+    selected.current = null; setHovered(null); setTooltip(null);
     const drawGuide = (instance: Readonly<Dygraph>) => {
       const visible = instance.xAxisRange();
       element.dataset.windowStart = String(visible[0]); element.dataset.windowEnd = String(visible[1]);
@@ -50,17 +52,15 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
     };
     const plotter = observationPlotter(prepared, parameter, mode);
     const options: dygraphs.Options = {
-      labels: ["Time", ...CHART_SERIES.slice(0, snow ? 4 : 2)],
+      labels: ["Time", ...CHART_SERIES.slice(0, thresholdsVisible ? 4 : 2)],
       labelsUTC: true, legend: "never", animatedZooms: false,
       interactionModel: Dygraph.defaultInteractionModel,
       dateWindow: [Date.parse(start), Date.parse(end)], valueRange: prepared.valueRange,
       customBars: false, connectSeparatedPoints: false, drawPoints: false,
       highlightCircleSize: 0, strokeWidth: 0, rightGap: 10,
-      showRangeSelector: true, rangeSelectorHeight: 28,
-      rangeSelectorPlotStrokeColor: "#5d8797", rangeSelectorPlotFillColor: "#e8f1f4",
+      showRangeSelector: false,
       axisLabelFontSize: 10, axisLineColor: "#bac9d1", gridLineColor: "#e7edf0",
       ylabel: classes ? undefined : calibrated ? "Visibility (m)" : "Raw model value",
-      y2label: thresholdAxis ? "Thresholds (raw)" : undefined,
       axes: {
         x: { pixelsPerLabel: 85, axisLabelWidth: 70 },
         y: { axisLabelWidth: classes ? 96 : 65,
@@ -73,33 +73,24 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
             ],
           axisLabelFormatter: value => calibrated && Number(value) > ceiling ? `>${number(ceiling, 0)}` : number(Number(value), calibrated ? 0 : 2),
         },
-        y2: { drawAxis: thresholdAxis, independentTicks: true, drawGrid: false,
-          axisLabelWidth: 38, valueRange: prepared.thresholdRange },
       },
       series: {
-        Prediction: { plotter, showInRangeSelector: true },
-        Unavailable: { plotter, showInRangeSelector: false },
-        ...Object.fromEntries(["Lower snow threshold", "Upper snow threshold"].map((name, index) => [name, {
-          axis: classes ? "y2" : "y1", color: index ? HIGH_SNOW_COLOUR : "#222222",
+        Prediction: { plotter },
+        Unavailable: { plotter },
+        ...Object.fromEntries((thresholdsVisible ? CHART_SERIES.slice(2) : []).map((name, index) => [name, {
+          color: index ? HIGH_SNOW_COLOUR : "#222222",
           stepPlot: true, strokeWidth: 1.3, strokePattern: index ? [3, 3] : [6, 3],
-          drawPoints: true, pointSize: 1.5, showInRangeSelector: false,
+          drawPoints: true, pointSize: 1.5,
         }])),
       },
-      highlightCallback: (_event, _x, _points, row) => {
-        const point = prepared.rows[row]?.point;
-        if (point) { selected.current = point.id; setHovered(point); }
-      },
-      unhighlightCallback: () => { selected.current = null; setHovered(null); },
       drawCallback: drawGuide,
     };
     const instance = new Dygraph(element, prepared.data, options);
-    // Dygraphs' decorative handle images have no alt text of their own.
-    element.querySelectorAll<HTMLImageElement>(".dygraph-rangesel-zoomhandle").forEach(handle => { handle.alt = ""; });
     graph.current = instance;
     const observer = new ResizeObserver(() => instance.resize());
     observer.observe(element);
     return () => { observer.disconnect(); instance.destroy(); graph.current = null; };
-  }, [prepared, parameter, mode, start, end, snow, classes, calibrated, thresholdAxis, ceiling]);
+  }, [prepared, parameter, mode, start, end, thresholdsVisible, classes, calibrated, ceiling]);
 
   // The guide follows the map without recreating the graph or losing its zoom.
   useEffect(() => { graph.current?.updateOptions({}); }, [mapTime]);
@@ -118,36 +109,47 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
   return <div className="history-chart">
     <div className="chart-keys" aria-label="Chart legend">
       <span><i className="chart-key map-time-key" />Map time: {utc(mapTime)}{outside && " · outside visible range"}</span>
-      {snow && <><span><i className="chart-key lower-threshold-key" />Lower snow threshold</span>
+      {thresholdsVisible && <><span><i className="chart-key lower-threshold-key" />Lower snow threshold</span>
         <span><i className="chart-key upper-threshold-key" />Upper snow threshold</span>
         {!prepared.hasThresholds && <span>No thresholds published in this range</span>}</>}
     </div>
     <div className="chart-viewport">
       <div ref={host} className="dygraph-chart" role="img" tabIndex={0}
         aria-label={`${parameter} ${classes ? "categorical classes" : `${mode} prediction intervals`}, UTC. ${points.length} observations. Drag to zoom; use arrow keys to inspect observations.`}
+        onPointerDown={() => setTooltip(null)}
+        onPointerMove={event => {
+          const instance = graph.current;
+          if (!instance || event.buttons) { setTooltip(null); return; }
+          const box = event.currentTarget.getBoundingClientRect(), x = event.clientX - box.left, y = event.clientY - box.top;
+          const area = instance.getArea();
+          const point = x < area.x || x > area.x + area.w || y < area.y || y > area.y + area.h ? null
+            : hitHistoryObservation(prepared, mode, x, y, instance.toDataXCoord(x - 8), instance.toDataXCoord(x + 8),
+              time => instance.toDomXCoord(time), value => instance.toDomYCoord(value));
+          selected.current = point?.id ?? null; setHovered(point);
+          setTooltip(point ? { left: Math.max(6, Math.min(x + 12, box.width - Math.min(265, box.width - 12))), top: y + 10 } : null);
+        }}
+        onPointerLeave={() => { setTooltip(null); setHovered(null); selected.current = null; }}
         onKeyDown={event => {
           if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key) || !points.length) return;
           event.preventDefault();
           const current = selected.current === null ? -1 : points.findIndex(point => point.id === selected.current);
           const next = event.key === "Home" ? 0 : event.key === "End" ? points.length - 1 : current + (event.key === "ArrowLeft" ? -1 : 1);
           const point = points[Math.max(0, Math.min(points.length - 1, next))];
-          selected.current = point.id; setHovered(point);
+          selected.current = point.id; setHovered(point); setTooltip(null);
           graph.current?.setSelection(prepared.pointRows.get(point.id)!);
         }} />
       <div ref={guide} className="chart-map-time" aria-hidden="true" hidden />
+      {tooltip && hovered && <div className="chart-tooltip" role="tooltip" style={tooltip}>
+        <HistoryReadout point={hovered} parameter={parameter} mode={mode} />
+      </div>}
     </div>
     <div className="chart-navigation"><div className="segmented" aria-label="Chart zoom">
       <button onClick={() => zoom(0.5)}>Zoom in</button><button onClick={() => zoom(2)}>Zoom out</button>
       <button onClick={() => graph.current?.resetZoom()}>Reset zoom</button>
-    </div><span>Drag to zoom · Shift-drag to pan · Double-click to reset · Pinch on touchscreens</span></div>
+    </div><span title="Double-click to reset; pinch on touchscreens">Drag to zoom · Shift-drag to pan</span></div>
     <div className="chart-readout" aria-live="polite">
-      {hovered ? <><strong>{utc(hovered.t)}</strong>{!classes && <span>Interval: {mode === "raw" ? interval(hovered.lower, hovered.upper) : interval(hovered.calibrated_lower, hovered.calibrated_upper, "m")}</span>}
-        {calibrated && <span>Published centre: {number(hovered.calibrated_center)} m</span>}
-        {snow && <><span>Class: {snowClassLabel(hovered.snow_class, hovered)}</span>
-          <span>Lower snow threshold: {number(hovered.snow_threshold_low, 6)}</span>
-          <span>Upper snow threshold: {number(hovered.snow_threshold_high, 6)}</span></>}
-        <span>Model: {hovered.model_version ?? "not supplied"} · QC: {hovered.quality_code ?? "not supplied"}</span></>
-        : <span>{classes ? "Coloured dots show published snow classes; white dots mark unavailable classes." : "Bars show published intervals; white dots on the unavailable row mark missing results."} Hover or use arrow keys for exact values. All times are UTC.</span>}
+      {hovered ? <HistoryReadout point={hovered} parameter={parameter} mode={mode} />
+        : <span>Hover {classes ? "a class dot" : "an interval"} for exact values · Arrow keys inspect observations · UTC</span>}
     </div>
   </div>;
 }
