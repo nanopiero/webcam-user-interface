@@ -127,7 +127,21 @@ label { color: #536a78; }
 .chart-range label { font-size: 10px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .chart-range input { font-size: 11px; width: 100%; padding: 5px; }
 .chart-range button { font-size: 11px; padding: 6px 9px; }
-.interval-chart canvas { display: block; width: 100%; margin-top: 8px; cursor: crosshair; }
+.chart-viewport { position: relative; margin-top: 10px; }
+.dygraph-chart { width: 100%; height: 270px; min-width: 0; }
+.dygraph-chart:focus-visible { outline: 2px solid #157e9c; outline-offset: 3px; }
+.dygraph-chart canvas { cursor: crosshair; }
+.dygraph-chart .dygraph-axis-label { color: #637985; font-size: 10px; }
+.dygraph-chart .dygraph-label { color: #637985; font-size: 10px; }
+.chart-map-time { position: absolute; width: 0; border-left: 2px solid #000; pointer-events: none; z-index: 2; }
+.chart-keys { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 10px; color: #637985; }
+.chart-keys > span { display: inline-flex; align-items: center; gap: 5px; }
+.chart-key { display: inline-block; width: 18px; flex-shrink: 0; }
+.map-time-key { width: 0; height: 12px; border-left: 2px solid #000; margin: 0 7px; }
+.lower-threshold-key { border-top: 2px dashed #222; }
+.upper-threshold-key { border-top: 2px dashed #d000ff; }
+.chart-navigation { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 5px 0; font-size: 10px; color: #708793; }
+.chart-navigation button { padding: 4px 7px; font-size: 10px; }
 .chart-readout { min-height: 44px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px 12px; color: #708793; font-size: 10px; padding: 5px 8px; line-height: 1.6; }
 .chart-readout strong { font-weight: 500; color: #385968; }
 .chart-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 9px; border-top: 1px solid #eef2f4; color: #8397a2; font-size: 10px; }

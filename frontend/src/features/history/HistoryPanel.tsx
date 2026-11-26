@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { getHistory } from "../../api/client";
 import type { DiagramMode, FrontendConfiguration, HistoryPayload, Parameter } from "../../api/contracts";
 import { fromUTCInput, PARAMETER_LABELS, toUTCInput } from "../../shared/format";
-import IntervalCanvas from "./IntervalCanvas";
 import { bounds, mergeHistory, snowCategory } from "./series";
+
+const HistoryChart = lazy(() => import("./HistoryChart"));
 
 export interface DiagramRequest { key: string; id: string; name: string; parameter: Parameter; at: string | null }
 
-export default function HistoryPanel({ diagram, configuration, onClose }: {
-  diagram: DiagramRequest; configuration: FrontendConfiguration; onClose: () => void;
+export default function HistoryPanel({ diagram, configuration, mapTime, onClose }: {
+  diagram: DiagramRequest; configuration: FrontendConfiguration; mapTime: string | null; onClose: () => void;
 }) {
   const [range, setRange] = useState(() => {
     const end = diagram.at ?? new Date().toISOString();
@@ -31,7 +32,7 @@ export default function HistoryPanel({ diagram, configuration, onClose }: {
       .finally(() => { if (!abort.signal.aborted) setBusy(false); });
     return () => abort.abort();
   }, [diagram.id, diagram.parameter, range, revision]);
-  const points = mergeHistory(pages);
+  const points = useMemo(() => mergeHistory(pages), [pages]);
   const next = pages.at(-1)?.next_cursor;
   const missing = points.filter(point => mode === "classes" ? snowCategory(point.snow_class) === null : !bounds(point, mode)).length;
 
@@ -39,7 +40,7 @@ export default function HistoryPanel({ diagram, configuration, onClose }: {
     try {
       const next = { start: fromUTCInput(start), end: fromUTCInput(end) };
       const days = (Date.parse(next.end) - Date.parse(next.start)) / 86400000;
-      if (days < 0 || days > configuration.diagram.max_days) throw new Error(`Choose an ordered range of at most ${configuration.diagram.max_days} days.`);
+      if (days <= 0 || days > configuration.diagram.max_days) throw new Error(`Choose an end after the start, within ${configuration.diagram.max_days} days.`);
       setRange(next); setError("");
     } catch (error) { setError(error instanceof Error ? error.message : "Invalid date range"); }
   }
@@ -79,12 +80,15 @@ export default function HistoryPanel({ diagram, configuration, onClose }: {
     </form>
     {error && <p className="error" role="alert">{error}</p>}
     {busy && !pages.length ? <p className="empty" role="status">Loading observations…</p> : <>
-      <IntervalCanvas points={points} parameter={diagram.parameter} mode={mode} start={range.start} end={range.end} configuration={configuration} />
+      <Suspense fallback={<p className="empty" role="status">Loading chart…</p>}>
+        <HistoryChart points={points} parameter={diagram.parameter} mode={mode} start={range.start} end={range.end} mapTime={mapTime} configuration={configuration} />
+      </Suspense>
       <div className="chart-footer"><span>{points.length.toLocaleString()} observations · {missing.toLocaleString()} {mode === "classes" ? "without a published snow class" : `without a ${mode} interval`}{!points.length ? " · No observations received in this range" : ""}</span>
         {next && <button disabled={busy} onClick={loadOlder}>{busy ? "Loading…" : "Load older observations"}</button>}</div>
     </>}
     {mode === "calibrated" && <p className="muted small chart-note">Dots show the published centre. Values above {configuration.visibility_display.ceiling_metres.toLocaleString()} m share a display band; the readout retains the original values.</p>}
     {diagram.parameter === "snow" && <p className="muted small chart-note">Snow classes are categorical: no snow, intermediate cover, undifferentiated snow, and high cover when both thresholds were published. Raw model values are not a coverage percentage.
-      {mode === "raw" && " Black ticks show the lower threshold; violet ticks show the upper threshold, as published with each observation."}</p>}
+      {" Black dashed lines show the lower threshold; violet dashed lines show the upper threshold, as published with each observation. Missing thresholds leave gaps."}
+      {mode === "classes" && " Threshold values use the separate right-hand axis in raw model units."}</p>}
   </article>;
 }

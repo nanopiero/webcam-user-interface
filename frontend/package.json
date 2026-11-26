@@ -10,6 +10,7 @@
     "test:browser": "playwright test"
   },
   "dependencies": {
+    "dygraphs": "2.2.2",
     "maplibre-gl": "6.19.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
@@ -18,6 +19,7 @@
     "@playwright/test": "1.65.1",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
+    "@types/dygraphs": "2.2.0",
     "@types/geojson": "7946.0.16",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",

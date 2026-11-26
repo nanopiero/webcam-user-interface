@@ -171,7 +171,7 @@ function Observations({ configuration }: { configuration: FrontendConfiguration 
       </aside>
     </div>
     {diagrams.length > 0 && <section className="histories" aria-label="Prediction histories"><div className="histories-heading"><span>{diagrams.length} open histor{diagrams.length === 1 ? "y" : "ies"}</span><button className="quiet" onClick={() => setDiagrams([])}>Close all histories</button></div>
-      <div className="history-grid">{diagrams.map(diagram => <HistoryPanel key={diagram.key} diagram={diagram} configuration={configuration} onClose={() => setDiagrams(previous => previous.filter(item => item.key !== diagram.key))} />)}</div></section>}
+      <div className="history-grid">{diagrams.map(diagram => <HistoryPanel key={diagram.key} diagram={diagram} configuration={configuration} mapTime={at ?? data?.at ?? null} onClose={() => setDiagrams(previous => previous.filter(item => item.key !== diagram.key))} />)}</div></section>}
     <footer className="statusbar"><span>{data ? `Map updated ${utc(data.at)}` : "Waiting for map data"}</span><span>{status ? status.parameters.map(item => `${item.parameter}: ${item.observations.toLocaleString()}`).join(" · ") + " observations stored" : ""}</span></footer>
   </main>;
 }

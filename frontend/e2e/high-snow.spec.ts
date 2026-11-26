@@ -100,7 +100,7 @@ test("high snow is solid vivid violet in single and grouped markers, metadata an
   await history.getByRole("button", { name: "Raw model interval" }).click();
   await chart.focus(); await page.keyboard.press("End");
   await expect(history.locator(".chart-readout")).toContainText("Lower snow threshold: -2.5");
-  await expect(history.locator(".chart-note")).toContainText("violet ticks show the upper threshold");
+  await expect(history.locator(".chart-note")).toContainText("violet dashed lines show the upper threshold");
   await page.screenshot({ path: "test-results/high-snow-thresholds.png", fullPage: true });
   expect(errors).toEqual([]);
 });

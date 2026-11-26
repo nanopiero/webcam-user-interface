@@ -101,15 +101,23 @@ in the right panel and follow the active filters.
   Older observations without thresholds stay undifferentiated. Unavailable
   classes are white. No snow-coverage percentage or class is inferred from a raw model interval.
   The raw model interval remains available through a separate tab, with lower/upper thresholds
-  drawn as black/violet ticks at each observation time. The readout and webcam metadata show both
-  published thresholds; missing thresholds remain explicitly unavailable.
-  Each panel keeps its selected webcam while
-  the map selection changes. Choose a preset or custom UTC range, up to the configured limit.
+  drawn as black/violet dashed step lines using the values published with each observation.
+  The classes view shows those same thresholds against a separate right-hand **Thresholds (raw)**
+  axis; the left axis remains categorical. Missing thresholds leave gaps. The readout and webcam
+  metadata retain the exact published values, including zero; historical thresholds are never backfilled.
+  Each panel keeps its selected webcam and loaded range while the map selection changes. A solid
+  black vertical guide follows the current map time above, without resetting the chart zoom or
+  requesting history again. The chart legend gives that UTC time and indicates when it is outside
+  the visible chart range. Choose a preset or custom UTC range, up to the configured limit.
   **Load older observations** follows continuation pages when a range exceeds the server page size.
 - Raw intervals are model outputs; visibility raw values are not metres. **Calibrated · m** shows
   published visibility bounds and the published centre, when supplied. No midpoint is inferred.
-  Intervals are vertical bars; missing intervals are marked below the axis, never filled or
-  interpolated. Move over a chart or focus it and use arrow/Home/End keys for the numerical readout.
+  Intervals are discrete vertical bars; missing results use a labelled **Unavailable** row and are
+  never filled or interpolated. Histories use [Dygraphs](https://dygraphs.com/) with drag-to-zoom,
+  Shift-drag panning, touch pinch, a range selector and explicit **Zoom in**, **Zoom out**, and
+  **Reset zoom** buttons. Zoom/pan operate on downloaded data without map/history requests;
+  double-click resets the view. Move over a chart or focus it and use arrow/Home/End keys for the
+  numerical readout. Dygraphs is loaded only when a history is opened.
 - Selecting a webcam automatically loads its current provider image at the top of its details.
   **Reload image** resolves a fresh current URL; **Open provider page** opens the original resource.
   Windy URL resolution and Skaping public-page image metadata resolution happen on the backend.
@@ -160,7 +168,9 @@ provider when deployment traffic or provider terms require it. There is no offli
 
 `src/app` composes the page and owns selection/time state. `src/api` is the only HTTP layer.
 Each feature directory owns its own rendering and local state. `history/series.ts` contains pure
-history merging and value interpretation. Reference palettes/sprites are isolated in `map/icons.ts`;
+history merging and value interpretation; `chartData.ts` prepares the published values for Dygraphs,
+`chartPlotter.ts` draws discrete intervals/classes, and `HistoryChart.tsx` owns chart interactions
+and the map-time guide. Reference palettes/sprites are isolated in `map/icons.ts`;
 scene, calibration-management and image-archive controls are intentionally absent.
 `map/countries.ts` and `CountryFilter.tsx` own country labels, counts and selection controls.
 `map/roi.ts` is the administrative border profile registry; add other teams' ROI layers there.
