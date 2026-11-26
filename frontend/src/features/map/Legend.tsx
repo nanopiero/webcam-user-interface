@@ -17,7 +17,6 @@ export default function Legend({ parameter, freshness }: { parameter: Parameter;
     VISIBILITY_STEP_COLOURS[from], `${from.toLocaleString("en-GB")}–${to.toLocaleString("en-GB")} m`,
   ]);
   return <section className="legend" aria-label="Map legend">
-    <h2>{parameter === "snow" ? "Snow legend" : "Visibility legend"}</h2>
     <ul className="keys">
       {rows.map(([colour, label]) => <li key={label}><span className="swatch" style={{ background: colour }} />{label}</li>)}
       <li><span className="swatch" style={{ background: "white" }} />{parameter === "snow" ? "Recent snow observation · unqualified" : "Processed · result unavailable"}</li>
