@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 for (const parameter of ["snow", "visibility"] as const) {
-  test(`${parameter} shows fresh fills, ageing rings and expired dots per camera, including expanded groups`, async ({ page }) => {
+  test(`${parameter} shows fresh fills, ageing rings and expired dots with a chooser for grouped cameras`, async ({ page }) => {
     const policy = parameter === "snow" ? { fresh_minutes: 30, max_age_minutes: 180 }
       : { fresh_minutes: 15, max_age_minutes: 30 };
     const cls = parameter === "snow" ? "snow.undifferentiated" : "visibility.0_1500";
@@ -82,17 +82,11 @@ for (const parameter of ["snow", "visibility"] as const) {
 
     const box = (await mapCanvas.boundingBox())!;
     await mapCanvas.click({ position: { x: box.width / 2 + 2 * 512 * 2 ** 5.5 / 360, y: box.height / 2 } });
-    await expect(page.getByRole("region", { name: "Cameras at selected site" })).toBeVisible();
-    await page.waitForTimeout(700); // Complete the map's expansion/focus animation.
-    const expanded = await mapCanvas.screenshot();
-    const centre = await page.evaluate(async base64 => {
-      const image = new Image(); image.src = `data:image/png;base64,${base64}`; await image.decode();
-      const canvas = document.createElement("canvas"); canvas.width = image.width; canvas.height = image.height;
-      const context = canvas.getContext("2d")!; context.drawImage(image, 0, 0);
-      return [...context.getImageData(Math.round(canvas.width / 2 - 185 + 17 * Math.cos(Math.PI / 6)),
-        Math.round(canvas.height / 2 + 8.5 + 2), 1, 1).data].slice(0, 3);
-    }, expanded.toString("base64"));
-    centre.forEach((value, index) => expect(Math.abs(value - lower[index])).toBeLessThan(25));
+    const chooser = page.getByRole("dialog", { name: "Choose a webcam" });
+    await expect(chooser).toContainText("Choose a webcam · 3");
+    await expect(chooser.getByRole("button", { name: /^group-ageing/ }).locator(".freshness-ring")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Cameras at selected site" })).toHaveCount(0);
+    await expect(page.getByLabel("Sites in map view")).toHaveText("5 sites in view");
     expect(errors).toEqual([]);
   });
 }

@@ -73,10 +73,11 @@ test("high snow is solid vivid violet in single and grouped markers, metadata an
   expect(violetPixels.every(count => count > 40)).toBeTruthy();
   const box = (await canvas.boundingBox())!;
   await canvas.click({ position: { x: box.width / 2, y: box.height / 2 } });
-  const picker = page.getByRole("region", { name: "Cameras at selected site" });
-  await expect(picker.getByRole("button", { name: "1. High view" }).locator("span")).toHaveCSS("background-color", "rgb(208, 0, 255)");
-  await expect(picker.getByRole("button", { name: "1. High view" }).locator("span")).toHaveCSS("background-image", "none");
-  await picker.getByRole("button", { name: "1. High view" }).click();
+  const chooser = page.getByRole("dialog", { name: "Choose a webcam" });
+  const highView = chooser.getByRole("button", { name: /^High view/ });
+  await expect(highView.locator(".swatch")).toHaveCSS("background-color", "rgb(208, 0, 255)");
+  await expect(highView.locator(".swatch")).toHaveCSS("background-image", "none");
+  await highView.click();
   const detail = page.getByRole("complementary", { name: "Webcam details" });
   await expect(detail.getByText("High snow cover · uncertain", { exact: true })).toBeVisible();
   await expect(detail.locator('dt:has-text("Processed") + dd')).toHaveText("2026-11-17 10:00:02 UTC");

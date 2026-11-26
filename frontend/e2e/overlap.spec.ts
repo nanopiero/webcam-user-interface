@@ -76,7 +76,7 @@ test("whole markers cover lower outlines and a chooser opens the covered tiny we
   }, screenshot.toString("base64"));
   coveredOutline.forEach((value, index) => expect(Math.abs(value - [31, 111, 178][index])).toBeLessThan(25));
   await state.canvas.click({ position: state.centre });
-  const chooser = page.getByRole("dialog", { name: "Overlapping webcams" });
+  const chooser = page.getByRole("dialog", { name: "Choose a webcam" });
   await expect(chooser.getByRole("button", { name: /Tiny camera/ })).toBeVisible();
   await expect(chooser.getByRole("button", { name: /Large camera/ })).toBeVisible();
   expect(state.detailRequests).toEqual([]);
@@ -104,7 +104,7 @@ test("whole markers cover lower outlines and a chooser opens the covered tiny we
 test("the overlap chooser includes additional dots and each grouped camera, opening the chosen provider", async ({ page }) => {
   const state = await prepare(page, [site("group", [camera("north", "North view"), camera("south", "South view")])], true);
   await state.canvas.click({ position: state.centre });
-  const chooser = page.getByRole("dialog", { name: "Overlapping webcams" });
+  const chooser = page.getByRole("dialog", { name: "Choose a webcam" });
   await expect(chooser.getByRole("button", { name: /Additional camera/ })).toBeVisible();
   await expect(chooser.getByRole("button", { name: /^North view/ })).toBeVisible();
   await expect(chooser.getByRole("button", { name: /^South view/ })).toBeVisible();
@@ -118,7 +118,8 @@ test("the overlap chooser includes additional dots and each grouped camera, open
   await state.canvas.click({ position: state.centre });
   await chooser.getByRole("button", { name: /^South view/ }).click();
   await expect(page.locator(".camera-name")).toHaveText("South view");
-  await expect(page.getByRole("region", { name: "Cameras at selected site" }).getByRole("button", { name: "2. South view" })).toHaveAttribute("aria-pressed", "true");
+  await expect(chooser).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Cameras at selected site" })).toHaveCount(0);
   expect(state.mapRequests()).toBe(1);
   expect(state.errors).toEqual([]);
 });

@@ -4,14 +4,13 @@ import type { ExpressionSpecification, GeoJSONSource, Map as LibreMap } from "ma
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import type { FeatureCollection, Point } from "geojson";
 import type { AltitudeBand, BorderVisibility, FrontendConfiguration, Parameter, SiteFeature, SupplementaryFeature } from "../../api/contracts";
-import { MARKER_RADIUS, classColour } from "./icons";
+import { MARKER_RADIUS } from "./icons";
 import { addBorderLayers, showBorderLayers } from "./borders";
 import { initialBorderVisibility } from "./roi";
-import { ALTITUDE_BANDS, SMALL_DOT_RADIUS, cameraSector, markerScale, markerZoomScale, siteForAltitude, siteSectors, smallWhiteMarker } from "./presentation";
-import { expandedCameraPositions, groupMarkerFactor } from "./expansion";
+import { ALTITUDE_BANDS, SMALL_DOT_RADIUS, groupMarkerFactor, markerScale, markerZoomScale, siteForAltitude, siteSectors, smallWhiteMarker } from "./presentation";
 import { markerSprite } from "./sprites";
 import { markersAtPoint, webcamChoices, type ClickMarker, type WebcamTarget } from "./overlap";
-import OverlapMenu from "./OverlapMenu";
+import WebcamChooser from "./WebcamChooser";
 
 // MapLibre 6 requires an explicit bundled worker URL when used with Vite.
 maplibregl.setWorkerUrl(workerUrl);
@@ -36,9 +35,7 @@ interface Props {
   showSupplementary: boolean;
   borders: BorderVisibility;
   selected: SiteFeature | null;
-  selectedCameraId: string;
-  expanded: SiteFeature | null;
-  onExpand: (site: SiteFeature | null) => void;
+  onClearSelection: () => void;
   supplementary: SupplementaryFeature[];
   allSupplementary: SupplementaryFeature[];
   selectedSupplementary: SupplementaryFeature | null;
@@ -47,20 +44,18 @@ interface Props {
 }
 
 // One WebGL source for all sites; only the selected site uses interactive HTML.
-export default function MapView({ configuration, sites, allSites, parameter, altitudeBand, showObserved, showSupplementary, borders, selected, selectedCameraId, expanded, onExpand, onSelect, supplementary, allSupplementary, selectedSupplementary, onSelectSupplementary }: Props) {
+export default function MapView({ configuration, sites, allSites, parameter, altitudeBand, showObserved, showSupplementary, borders, selected, onClearSelection, onSelect, supplementary, allSupplementary, selectedSupplementary, onSelectSupplementary }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<LibreMap | null>(null);
   const sitesRef = useRef(sites);
   const onSelectRef = useRef(onSelect);
-  const expandedRef = useRef(expanded);
-  const onExpandRef = useRef(onExpand);
+  const onClearSelectionRef = useRef(onClearSelection);
   const supplementaryRef = useRef(supplementary);
   const onSupplementaryRef = useRef(onSelectSupplementary);
   const focusedId = useRef<string | null>(null);
   sitesRef.current = sites;
   onSelectRef.current = onSelect;
-  expandedRef.current = expanded;
-  onExpandRef.current = onExpand;
+  onClearSelectionRef.current = onClearSelection;
   supplementaryRef.current = supplementary;
   onSupplementaryRef.current = onSelectSupplementary;
   const [ready, setReady] = useState(false);
@@ -71,13 +66,10 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
   function choose(target: WebcamTarget) {
     setChooser(null);
     if (target.kind === "supplementary") onSupplementaryRef.current(target.webcam);
-    else if (target.camera) onSelectRef.current(target.site, target.camera.p);
-    else if (target.site.properties.n > 1) onExpandRef.current(
-      expandedRef.current?.properties.id === target.site.properties.id ? null : target.site);
-    else onSelectRef.current(target.site);
+    else onSelectRef.current(target.site, target.camera?.p);
   }
 
-  useEffect(() => { setChooser(null); }, [sites, supplementary, expanded, parameter, altitudeBand]);
+  useEffect(() => { setChooser(null); }, [sites, supplementary, parameter, altitudeBand]);
 
   useEffect(() => {
     if (!container.current) return;
@@ -108,7 +100,7 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
     });
     instance.on("idle", () => {
       if (instance.getLayer("sites")) {
-        const visible = instance.queryRenderedFeatures({ layers: ["sites", "supplementary", "cameras"] });
+        const visible = instance.queryRenderedFeatures({ layers: ["sites", "supplementary"] });
         setVisibleSites(new Set(visible.map(feature => `${feature.source}:${feature.properties.id}`)).size);
       }
     });
@@ -136,17 +128,7 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
         "circle-radius": 21, "circle-color": "rgba(0,0,0,0)",
         "circle-stroke-color": "#087d92", "circle-stroke-width": 3,
       } });
-      instance.addSource("camera-links", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-      instance.addLayer({ id: "camera-links", type: "line", source: "camera-links", paint: {
-        "line-color": "#555555", "line-width": 1.5, "line-dasharray": [0.75, 1.5],
-      } });
-      instance.addSource("expanded-cameras", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-      instance.addLayer({ id: "cameras", type: "symbol", source: "expanded-cameras", layout: {
-        "icon-image": ["get", "icon"], "icon-size": markerSize(scale, 1, undefined, "small"),
-        "icon-allow-overlap": true, "icon-ignore-placement": true,
-        "symbol-sort-key": ["get", "order"], "symbol-z-order": "source",
-      } });
-      for (const layer of ["sites", "supplementary", "cameras"]) {
+      for (const layer of ["sites", "supplementary"]) {
         instance.on("mouseenter", layer, () => { instance.getCanvas().style.cursor = "pointer"; });
         instance.on("mouseleave", layer, () => { instance.getCanvas().style.cursor = ""; });
       }
@@ -158,31 +140,22 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
           : MARKER_RADIUS * normal * group + (uncertain ? 3.2 : 2) * normal;
         const markers: ClickMarker[] = [];
         for (const site of sitesRef.current) {
-          if (site.properties.id === expandedRef.current?.properties.id) continue;
           markers.push({ centre: instance.project(site.geometry.coordinates),
             radius: radius(site.properties.cams.every(smallWhiteMarker), groupMarkerFactor(site.properties.n), site.properties.u),
             target: { kind: "observed", site } });
         }
         for (const webcam of supplementaryRef.current) markers.push({ centre: instance.project(webcam.geometry.coordinates),
           radius: radius(true, 1, false, true), target: { kind: "supplementary", webcam } });
-        const expandedSite = expandedRef.current;
-        if (expandedSite) for (const point of expandedCameraPositions(expandedSite,
-          coordinates => instance.project(coordinates), pixel => instance.unproject([pixel.x, pixel.y]).toArray())) {
-          markers.push({ centre: instance.project(point.coordinates), radius: radius(smallWhiteMarker(point.camera), 1, point.camera.u),
-            target: { kind: "observed", site: expandedSite, camera: point.camera } });
-        }
-        const hits = markersAtPoint(markers, event.point);
-        if (hits.length === 1) { choose(hits[0]); return; }
-        if (hits.length > 1) {
-          const choices = webcamChoices(hits);
-          if (choices.length === 1) { choose(choices[0]); return; }
+        const choices = webcamChoices(markersAtPoint(markers, event.point));
+        if (choices.length === 1) { choose(choices[0]); return; }
+        if (choices.length > 1) {
           setChooser({ choices,
             left: Math.max(8, Math.min(event.point.x + 12, instance.getContainer().clientWidth - 308)),
             top: Math.max(8, Math.min(event.point.y + 12, instance.getContainer().clientHeight - 280)) });
           return;
         }
         setChooser(null);
-        onExpandRef.current(null);
+        onClearSelectionRef.current();
       });
       setReady(true);
     });
@@ -226,14 +199,13 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
     const instance = map.current;
     if (!ready || !instance) return;
     instance.setLayoutProperty("sites", "visibility", showObserved ? "visible" : "none");
-    for (const layer of ["cameras", "camera-links"]) instance.setLayoutProperty(layer, "visibility", showObserved ? "visible" : "none");
     instance.setLayoutProperty("sites", "icon-image", ["coalesce", ["image", ["get", `icon_${altitudeBand}`]], ["image", ["get", "icon_all"]]]);
-    const visibleSites: ExpressionSpecification = ["all", ["in", ["get", "id"], ["literal", sites.map(site => site.properties.id)]], ["!=", ["get", "id"], expanded?.properties.id ?? ""]];
+    const visibleSites: ExpressionSpecification = ["in", ["get", "id"], ["literal", sites.map(site => site.properties.id)]];
     instance.setFilter("sites", visibleSites);
     instance.setLayoutProperty("sites", "icon-size", markerSize(markerScale(configuration.map.marker_scale), 1, `factor_${altitudeBand}`, `small_${altitudeBand}`));
     instance.setLayoutProperty("supplementary", "visibility", showSupplementary ? "visible" : "none");
     instance.setFilter("supplementary", ["in", ["get", "id"], ["literal", supplementary.map(item => item.properties.id)]]);
-  }, [ready, sites, supplementary, altitudeBand, showObserved, showSupplementary, expanded, configuration.map.marker_scale]);
+  }, [ready, sites, supplementary, altitudeBand, showObserved, showSupplementary, configuration.map.marker_scale]);
 
   useEffect(() => {
     if (ready && map.current) showBorderLayers(map.current, borders);
@@ -241,56 +213,27 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
 
   useEffect(() => {
     if (!ready || !map.current) return;
-    const instance = map.current;
-    const render = () => {
-      const points = expanded ? expandedCameraPositions(expanded, coordinates => instance.project(coordinates),
-        pixel => instance.unproject([pixel.x, pixel.y]).toArray()) : [];
-      (instance.getSource("expanded-cameras") as GeoJSONSource).setData({ type: "FeatureCollection",
-        features: [...points].sort((a, b) => a.camera.p.localeCompare(b.camera.p)).map(({ camera, coordinates }, order) => {
-          const sectors = [cameraSector(camera)];
-          const small = smallWhiteMarker(camera);
-          const icon = markerSprite(instance, sectors, { small, uncertain: camera.u });
-          return { type: "Feature" as const, geometry: { type: "Point" as const, coordinates },
-            properties: { id: expanded!.properties.id, p: camera.p, icon, order, small } };
-        }) });
-      (instance.getSource("camera-links") as GeoJSONSource).setData({ type: "FeatureCollection",
-        features: points.map(({ coordinates }) => ({ type: "Feature" as const, properties: {},
-          geometry: { type: "LineString" as const, coordinates: [expanded!.geometry.coordinates, coordinates] } })) });
-      let geometry = selectedSupplementary?.geometry ?? selected?.geometry ?? null;
-      const selectedPoint = selected?.properties.id === expanded?.properties.id
-        ? points.find(point => point.camera.p === selectedCameraId) : null;
-      if (selectedPoint) geometry = { type: "Point", coordinates: selectedPoint.coordinates };
-      const selection: FeatureCollection<Point> = { type: "FeatureCollection", features: geometry
-        ? [{ type: "Feature", geometry, properties: {} }] : [] };
-      (instance.getSource("selection") as GeoJSONSource).setData(selection);
-    };
-    render();
-    if (expanded) instance.on("move", render);
-    return () => { if (expanded) instance.off("move", render); };
-  }, [ready, expanded, selected, selectedCameraId, selectedSupplementary]);
+    const geometry = selectedSupplementary?.geometry ?? selected?.geometry ?? null;
+    const selection: FeatureCollection<Point> = { type: "FeatureCollection", features: geometry
+      ? [{ type: "Feature", geometry, properties: {} }] : [] };
+    (map.current.getSource("selection") as GeoJSONSource).setData(selection);
+  }, [ready, selected, selectedSupplementary]);
 
   useEffect(() => {
     if (!ready || !map.current) return;
-    const selection = expanded ?? selectedSupplementary ?? selected;
+    const selection = selectedSupplementary ?? selected;
     if (selection && focusedId.current !== selection.properties.id) map.current.easeTo({ center: selection.geometry.coordinates,
       offset: [map.current.getContainer().clientWidth > 650 ? -185 : 0, 0], duration: 450 });
     focusedId.current = selection?.properties.id ?? null;
-  }, [expanded, selected, selectedSupplementary, ready]);
+  }, [selected, selectedSupplementary, ready]);
 
   return <div className="map-wrap" aria-busy={!ready}>
     <div ref={container} className="map" aria-label="Webcam observation map" />
     <button className="map-home" title="Return to the initial map extent" onClick={() => map.current?.easeTo({
       center: configuration.map.center, zoom: configuration.map.zoom, duration: 600,
     })}>Reset view</button>
-    {chooser && <OverlapMenu choices={chooser.choices} position={{ left: chooser.left, top: chooser.top }}
+    {chooser && <WebcamChooser choices={chooser.choices} position={{ left: chooser.left, top: chooser.top }}
       onChoose={choose} onClose={() => setChooser(null)} />}
-    {expanded && showObserved && <section className="camera-picker" aria-label="Cameras at selected site">
-      <div className="panel-heading"><strong>{expanded.properties.n} webcam views</strong><button className="icon-button" aria-label="Collapse webcam group" onClick={() => onExpand(null)}>×</button></div>
-      <div className="camera-choices">{expanded.properties.cams.map((camera, index) => <button key={camera.p}
-        className={selected?.properties.id === expanded.properties.id && selectedCameraId === camera.p ? "active" : ""}
-        aria-pressed={selected?.properties.id === expanded.properties.id && selectedCameraId === camera.p}
-        onClick={() => onSelect(expanded, camera.p)}><span className="camera-choice-dot" style={{ background: classColour(camera.cls) }} />{index + 1}. {camera.name}</button>)}</div>
-    </section>}
     {ready && <div className="map-visible-count" aria-label="Sites in map view">{visibleSites.toLocaleString()} sites in view</div>}
     {error && <div className="map-notice" role="status">{error}</div>}
   </div>;

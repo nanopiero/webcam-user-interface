@@ -23,6 +23,7 @@ it("finds covered small dots and large markers without depending on their draw o
 });
 
 it("lists every view once and keeps supplementary identities separate from WEOW identities", () => {
+  expect(webcamChoices([{ kind: "observed", site }]).map(targetKey)).toEqual(["weow:north", "weow:south"]);
   const choices = webcamChoices([{ kind: "observed", site }, { kind: "observed", site, camera: cams[0] },
     { kind: "supplementary", webcam }]);
   expect(choices.map(targetKey)).toEqual(["additional:north", "weow:north", "weow:south"]);

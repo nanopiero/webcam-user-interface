@@ -34,22 +34,21 @@ in the right panel and follow the active filters.
   qualification; stored histories retain their published predictions and qualification codes.
 - Select a site on the map, or enter a name/platform in the compact search and select a result.
   Sites are grouped by published platform identity. A group with several views uses a disc 50%
-  larger than a single-camera marker, following the admin UI's 9:6 size ratio. Clicking the group
-  expands its individually clickable cameras; overlapping views spread around the site with
-  short, thick dashed connecting lines (a 17-pixel minimum spread radius). Choose a camera marker
-  or a numbered view button to load its provider image. A group containing only cameras without
-  recent observations stays a small white dot; expansion shows each view's own availability.
-  The details popup has no repeated camera dropdown; use the expanded markers or numbered buttons
-  to switch views. Click the map background or **Collapse webcam group**
-  to collapse it. A single-camera site opens its image immediately.
+  larger than a single-camera marker, following the admin UI's 9:6 size ratio. Every map click uses
+  the same rule: one webcam opens its popup directly; several webcams open **Choose a webcam · N**.
+  This applies both to a single grouped marker and to several overlapping markers. Choosing a view
+  opens its own provider image. Click the unchanged marker again to choose another view. Grouped
+  discs retain their coloured sectors and stay at the published site location throughout selection.
+  A group containing only cameras without recent observations stays a small white dot and still
+  offers each view in the chooser. Click the map background to close the popup/chooser.
   The left panel contains altitude controls rather than a full webcam list: **All altitudes**,
   **Below 500 m**, **500–1,000 m**, **Above 1,000 m**. The middle band includes both endpoints.
   Both WEOW and supplementary points use the filter; unknown altitudes appear under All.
 - Overlapping markers keep their fill, ageing ring and outline together in one cached image.
   Drawing order is stable by marker identity within each layer; additional dots remain above site
-  markers, and expanded camera views above both. Clicking several markers opens a compact chooser
+  markers. Every click involving several webcams opens the same compact chooser
   with each webcam's name and colour, including covered tiny dots and individual views of groups.
-  Choosing a webcam opens its own popup. A single marker retains its usual click behaviour.
+  Choosing a webcam opens its own popup. A single webcam opens directly.
   The chooser uses already loaded, currently visible data and the existing four-pixel tolerance;
   hidden webcams and transparent image padding do not enlarge the selection. Escape, map movement,
   filter changes or the close button dismiss it. Only choosing a webcam requests its details/image.
@@ -72,7 +71,7 @@ in the right panel and follow the active filters.
   outer ring with their colours retained in the centre. At the second threshold, every classification
   or unqualified white disc becomes a small white dot. Mixed-age groups use camera sectors even if
   their classes agree; each ageing sector has a white outer arc, and an expired sector is white.
-  Expanded cameras retain their individual styles. The legend reads the effective thresholds from
+  The chooser retains each camera's colour and ageing ring. The legend reads the effective thresholds from
   the map response. Qualification rules apply to both fresh and ageing observations.
   Age uses `download_timestamp` (`properties.datetime` in MQTT); acquisition, processing,
   publication and UI reception times never extend it. Historical maps measure age against the
@@ -152,8 +151,9 @@ history merging and value interpretation. Reference palettes/sprites are isolate
 scene, calibration-management and image-archive controls are intentionally absent.
 `map/countries.ts` and `CountryFilter.tsx` own country labels, counts and selection controls.
 `map/roi.ts` is the administrative border profile registry; add other teams' ROI layers there.
-`map/expansion.ts` lays out overlapping cameras in screen pixels without changing their published
-coordinates. Group expansion uses the already downloaded cameras and adds no observation request.
+`map/overlap.ts` finds all webcams under a click and deduplicates individual group views.
+`map/WebcamChooser.tsx` presents the shared chooser for groups and overlapping markers.
+Both use already downloaded data. Only a chosen webcam's popup requests provider metadata.
 `map/useMapData.ts` owns scoped loading/refresh and `map/cache.ts` merges refreshed countries,
 including removals, while retaining hidden cached countries. Browser requests bypass the HTTP cache.
 `map/presentation.ts` computes country/altitude-specific grouped classes from cached cameras.

@@ -57,7 +57,6 @@ function Observations({ configuration }: { configuration: FrontendConfiguration 
   const countries = useMemo<Set<string | null>>(() => new Set(showBordering ? configuration.countries : configuration.roi.countries), [showBordering, configuration]);
   const [borders, setBorders] = useState<BorderVisibility>(() => initialBorderVisibility(configuration.roi.name, configuration.map.borders));
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [cameraId, setCameraId] = useState("");
   const [showAdmin, setShowAdmin] = useState(false);
   const [supplementary, setSupplementary] = useState<SupplementaryPayload | null>(null);
@@ -107,7 +106,6 @@ function Observations({ configuration }: { configuration: FrontendConfiguration 
       .sort((a, b) => (a.properties.name ?? a.properties.platform).localeCompare(b.properties.name ?? b.properties.platform));
   }, [countrySites, data, search, hideWhite, showObserved, altitudeBand, parameter]);
   const selected = sites.find(site => site.properties.id === selectedId) ?? null;
-  const expanded = sites.find(site => site.properties.id === expandedId && site.properties.n > 1) ?? null;
   const additional = useMemo(() => {
     const query = searchable(search.trim());
     return showSupplementary ? (supplementary?.features ?? []).filter(item => matchesAltitude(item.properties.altitude, altitudeBand) && (!query || searchable(`${item.properties.name} ${item.properties.source_layer_name}`).includes(query))) : [];
@@ -115,9 +113,9 @@ function Observations({ configuration }: { configuration: FrontendConfiguration 
   const selectedAdditional = additional.find(item => item.properties.id === supplementaryId) ?? null;
   const count = sites.reduce((sum, site) => sum + site.properties.n, 0);
   const listener = status?.listeners.some(item => item.connected && Date.now() - Date.parse(item.heartbeat_at) < 120000);
-  function select(site: SiteFeature, camera?: string) { setExpandedId(site.properties.n > 1 ? site.properties.id : null); setSelectedId(site.properties.id); setCameraId(camera ?? site.properties.cams[0].p); setSupplementaryId(null); setShowAdmin(false); setExplorerOpen(false); }
-  function expand(site: SiteFeature | null) { setExpandedId(site?.properties.id ?? null); setSelectedId(null); setSupplementaryId(null); setShowAdmin(false); setExplorerOpen(false); }
-  function selectAdditional(item: SupplementaryFeature) { setExpandedId(null); setSupplementaryId(item.properties.id); setSelectedId(null); setShowAdmin(false); setExplorerOpen(false); }
+  function select(site: SiteFeature, camera?: string) { setSelectedId(site.properties.id); setCameraId(camera ?? site.properties.cams[0].p); setSupplementaryId(null); setShowAdmin(false); setExplorerOpen(false); }
+  function clearSelection() { setSelectedId(null); setSupplementaryId(null); setShowAdmin(false); setExplorerOpen(false); }
+  function selectAdditional(item: SupplementaryFeature) { setSupplementaryId(item.properties.id); setSelectedId(null); setShowAdmin(false); setExplorerOpen(false); }
   function openHistory(id: string, name: string, parameter: Parameter) {
     const key = `${id}:${parameter}:${at ?? "latest"}`;
     setDiagrams(previous => previous.some(item => item.key === key) ? previous : [...previous, { key, id, name, parameter, at }]);
@@ -156,7 +154,7 @@ function Observations({ configuration }: { configuration: FrontendConfiguration 
           <span className="site-dot catalogue-dot" /><span><strong>{item.properties.name}</strong><small>{item.properties.altitude == null ? "Altitude not published" : `${item.properties.altitude.toLocaleString()} m`} · uMap</small></span></button>)}
           {!additional.length && <p className="empty">No matching additional webcam.</p>}{additional.length > 8 && <p className="muted small list-note">Refine the search for more results.</p>}</div>}
       </aside>
-      <section className="map-area" aria-label="Observation explorer"><Suspense fallback={<p className="empty" role="status">Loading map…</p>}><MapView configuration={configuration} sites={sites} allSites={countrySites} parameter={data?.parameter ?? parameter} altitudeBand={altitudeBand} showObserved={showObserved} showSupplementary={showSupplementary} borders={borders} selected={selected} selectedCameraId={cameraId} expanded={expanded} onExpand={expand} onSelect={select} supplementary={additional} allSupplementary={supplementary?.features ?? EMPTY_SUPPLEMENTARY} selectedSupplementary={selectedAdditional} onSelectSupplementary={selectAdditional} /></Suspense>
+      <section className="map-area" aria-label="Observation explorer"><Suspense fallback={<p className="empty" role="status">Loading map…</p>}><MapView configuration={configuration} sites={sites} allSites={countrySites} parameter={data?.parameter ?? parameter} altitudeBand={altitudeBand} showObserved={showObserved} showSupplementary={showSupplementary} borders={borders} selected={selected} onClearSelection={clearSelection} onSelect={select} supplementary={additional} allSupplementary={supplementary?.features ?? EMPTY_SUPPLEMENTARY} selectedSupplementary={selectedAdditional} onSelectSupplementary={selectAdditional} /></Suspense>
         <div className="map-caption"><span className="eyebrow">{PARAMETER_LABELS[parameter]}</span><span>{at ? `As of ${utc(at)}` : "Latest observations"}</span></div>
         {showAdmin ? <AdminPanel administrator={administrator} revision={revision} onChanged={() => setRevision(value => value + 1)} onClose={() => setShowAdmin(false)} />
           : selectedAdditional ? <SupplementaryPanel webcam={selectedAdditional} onClose={() => setSupplementaryId(null)} />

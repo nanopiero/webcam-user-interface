@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("a grouped disc expands and both camera markers open their own provider images", async ({ page }) => {
+test("grouped cameras use the same chooser and switch provider images without splitting the marker", async ({ page }) => {
   const now = new Date().toISOString();
   let mapRequests = 0;
   const camera = (p: string, name: string, cls: string, x = 2) => ({ p, name, cls, x, y: 47,
@@ -27,7 +27,7 @@ test("a grouped disc expands and both camera markers open their own provider ima
   await page.route("**/api/webcams/**", route => {
     const path = new URL(route.request().url()).pathname;
     const id = path.split("/")[3];
-    const selected = id === "north" ? north : south;
+    const selected = [north, south, solo].find(camera => camera.p === id)!;
     const provider = { page_url: `https://images.example.org/${id}`, image_url: `https://images.example.org/${id}.svg`,
       image_embeddable: true, available: true };
     return route.fulfill({ json: path.endsWith("/provider") ? provider : { processing_stream_id: id,
@@ -47,22 +47,31 @@ test("a grouped disc expands and both camera markers open their own provider ima
   await expect.poll(async () => await page.getByLabel("Sites in map view").textContent()).toBe("2 sites in view");
   await page.screenshot({ path: "test-results/grouped-marker-size.png", fullPage: true });
   await canvas.click({ position: { x: box.width / 2, y: box.height / 2 } });
-  const picker = page.getByRole("region", { name: "Cameras at selected site" });
-  await expect(picker.getByRole("button", { name: "1. North view" })).toBeVisible();
-  await expect(picker.getByRole("button", { name: "2. South view" })).toBeVisible();
+  const chooser = page.getByRole("dialog", { name: "Choose a webcam" });
+  await expect(chooser).toContainText("Choose a webcam · 2");
+  await expect(chooser.getByRole("button", { name: /^North view/ })).toBeVisible();
+  await expect(chooser.getByRole("button", { name: /^South view/ })).toBeVisible();
   await expect(page.getByRole("complementary", { name: "Webcam details" })).toHaveCount(0);
-  await page.waitForTimeout(600); // The group centres with a 450 ms map animation before camera clicks.
-  const centreX = box.width / 2 + (box.width > 650 ? -185 : 0);
-  await canvas.click({ position: { x: centreX, y: box.height / 2 - 17 } });
+  await expect(page.getByRole("region", { name: "Cameras at selected site" })).toHaveCount(0);
+  await chooser.getByRole("button", { name: /^North view/ }).click();
   const detail = page.getByRole("complementary", { name: "Webcam details" });
   await expect(detail.getByRole("img", { name: /^Current view from/ })).toHaveAttribute("src", "https://images.example.org/north.svg");
-  await canvas.click({ position: { x: centreX, y: box.height / 2 + 17 } });
+  await expect(chooser).toHaveCount(0);
+  await page.waitForTimeout(600); // Complete the selected site's focus animation.
+  const centreX = box.width / 2 + (box.width > 650 ? -185 : 0);
+  await canvas.click({ position: { x: centreX, y: box.height / 2 } });
+  await expect(chooser).toContainText("Choose a webcam · 2");
+  await chooser.getByRole("button", { name: /^South view/ }).click();
   await expect(detail.getByRole("img", { name: /^Current view from/ })).toHaveAttribute("src", "https://images.example.org/south.svg");
   await expect(detail.getByRole("combobox", { name: "Webcam", exact: true })).toHaveCount(0);
-  await expect(picker.getByRole("button", { name: "2. South view" })).toHaveAttribute("aria-pressed", "true");
-  await page.screenshot({ path: "test-results/expanded-webcam-group.png", fullPage: true });
-  await page.getByRole("button", { name: "Collapse webcam group" }).click();
-  await expect(picker).toHaveCount(0);
+  await expect(chooser).toHaveCount(0);
+  await page.screenshot({ path: "test-results/grouped-webcam-chooser.png", fullPage: true });
+  await page.getByRole("button", { name: "Close webcam details" }).click();
+  await page.getByRole("button", { name: "Reset view" }).click();
+  await page.waitForTimeout(700);
+  await canvas.click({ position: { x: box.width / 2 + 2 * 512 * 2 ** 5.5 / 360, y: box.height / 2 } });
+  await expect(detail.getByRole("img", { name: /^Current view from/ })).toHaveAttribute("src", "https://images.example.org/solo.svg");
+  await expect(chooser).toHaveCount(0);
   await expect(page.getByLabel("Visible WEOW webcams").locator("strong")).toHaveText("3");
   expect(errors).toEqual([]);
   expect(mapRequests).toBe(1);

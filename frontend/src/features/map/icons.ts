@@ -76,7 +76,7 @@ export function classColour(name?: string | null): string {
  * Draw camera sectors, preserving each visibility band's two colours.
  * The outer outline is part of the image, so overlapping markers remain whole.
  * Ageing sectors retain their coloured centre and have a white outer ring.
- * The same renderer serves single cameras, grouped sites and expanded cameras.
+ * The same renderer serves single cameras and grouped sites.
  */
 export interface MarkerSector { lower: string; upper: string; ageing: boolean }
 export const MARKER_RADIUS = 15;

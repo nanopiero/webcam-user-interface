@@ -29,8 +29,11 @@ test("live map, site selection, provider links and both prediction histories", a
   await page.getByLabel("Webcam search results").getByRole("button").first().click();
   const detail = page.getByRole("complementary", { name: "Webcam details" });
   if (site.properties.n > 1) {
-    const cameraIndex = site.properties.cams.findIndex((camera: { p: string }) => camera.p === selectedCamera.p);
-    await page.getByRole("region", { name: "Cameras at selected site" }).getByRole("button", { name: `${cameraIndex + 1}. ${selectedCamera.name}`, exact: true }).click();
+    await page.waitForTimeout(600); // Complete the selected site's focus animation.
+    const box = (await page.locator(".maplibregl-canvas").boundingBox())!;
+    await page.locator(".maplibregl-canvas").click({ position: { x: box.width / 2 - 185, y: box.height / 2 } });
+    await page.getByRole("dialog", { name: "Choose a webcam" })
+      .locator(`button[data-webcam-key="weow:${selectedCamera.p}"]`).click();
   }
   await expect(detail.getByRole("heading", { name: "Visibility observation" })).toBeVisible();
   await expect(detail.getByText("Published centre", { exact: true })).toBeVisible();

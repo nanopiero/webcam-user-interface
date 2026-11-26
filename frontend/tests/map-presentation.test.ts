@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import type { Camera, SiteFeature } from "../src/api/contracts";
-import { cameraSector, markerScale, siteForAltitude, siteForCameras, siteSectors, smallWhiteMarker } from "../src/features/map/presentation";
+import { cameraSector, groupMarkerFactor, markerScale, siteForAltitude, siteForCameras, siteSectors, smallWhiteMarker } from "../src/features/map/presentation";
 import { CLASS_COLOURS, HIGH_SNOW_COLOUR, classColour } from "../src/features/map/icons";
 
 const camera = (p: string, altitude: number | null, cls: string): Camera => ({
@@ -40,6 +40,8 @@ it("defaults to compact WEOW icons and handles invalid display configuration", (
   expect(markerScale(0)).toBe(0.65);
   expect(markerScale(Number.NaN)).toBe(0.65);
   expect(markerScale(1)).toBe(1);
+  expect(groupMarkerFactor(1)).toBe(1);
+  expect(groupMarkerFactor(2)).toBe(1.5);
 });
 
 it("uses small white dots for missing or stale observations and large discs for recent unqualified results", () => {
@@ -61,7 +63,7 @@ it("keeps high and undifferentiated snow as distinct grouped classes with solid 
   expect(classColour("snow.undifferentiated")).toBe(CLASS_COLOURS["snow.undifferentiated"]);
 });
 
-it("keeps each camera's freshness in same-class groups, country/altitude views and expanded markers", () => {
+it("keeps each camera's freshness in same-class groups and country/altitude views", () => {
   const fresh = { ...camera("fresh", 100, "snow.high"), freshness: "fresh" as const };
   const ageing = { ...camera("ageing", 700, "snow.high"), freshness: "ageing" as const };
   const expired = { ...camera("expired", 700, "white"), freshness: "expired" as const, w: "stale" };

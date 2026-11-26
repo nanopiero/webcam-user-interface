@@ -163,17 +163,12 @@ summary { cursor: pointer; color: #657f8c; font-size: 11px; }
 .provider-selector { display: flex; flex-direction: column; gap: 5px; font-size: 10px; }
 .explorer-toggle { display: none; }
 .country-filter { padding: 12px 16px 0; }
-.camera-picker { position: absolute; top: 72px; left: 14px; z-index: 2; width: 285px; max-width: calc(100% - 28px); padding: 10px; background: #ffffffed; border: 1px solid var(--border); border-radius: 7px; box-shadow: 0 3px 14px #29465320; }
-.camera-picker .panel-heading { margin-bottom: 8px; }
-.camera-choices { display: grid; gap: 6px; max-height: 190px; overflow: auto; }
-.camera-choices button { display: flex; align-items: center; gap: 7px; text-align: left; font-size: 11px; }
-.camera-choice-dot { width: 10px; height: 10px; border: 1px solid #222; border-radius: 50%; flex-shrink: 0; }
-.overlap-picker { position: absolute; z-index: 4; width: 300px; max-width: calc(100% - 16px); padding: 10px; border: 1px solid var(--border); border-radius: 7px; background: #fff; box-shadow: 0 4px 18px #29465330; }
-.overlap-picker .panel-heading { margin-bottom: 8px; font-size: 12px; }
-.overlap-choices { display: grid; gap: 5px; max-height: 220px; overflow: auto; }
-.overlap-choices button { display: flex; align-items: center; gap: 9px; text-align: left; padding: 8px; }
-.overlap-choices strong { display: block; font-size: 12px; font-weight: 500; }
-.overlap-choices small { display: block; margin-top: 3px; color: #607580; font-size: 10px; }
+.webcam-chooser { position: absolute; z-index: 4; width: 300px; max-width: calc(100% - 16px); padding: 10px; border: 1px solid var(--border); border-radius: 7px; background: #fff; box-shadow: 0 4px 18px #29465330; }
+.webcam-chooser .panel-heading { margin-bottom: 8px; font-size: 12px; }
+.webcam-choices { display: grid; gap: 5px; max-height: 220px; overflow: auto; }
+.webcam-choices button { display: flex; align-items: center; gap: 9px; text-align: left; padding: 8px; }
+.webcam-choices strong { display: block; font-size: 12px; font-weight: 500; }
+.webcam-choices small { display: block; margin-top: 3px; color: #607580; font-size: 10px; }
 .bordering-toggle { margin: 0; font-weight: 500; }
 .altitude-filter { padding: 20px 16px 15px; border-bottom: 1px solid var(--border); }
 .altitude-filter h2 { font-size: 13px; margin-bottom: 12px; }

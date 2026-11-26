@@ -24,7 +24,7 @@ export function targetName(target: WebcamTarget): string {
     : target.camera?.name ?? target.site.properties.name ?? target.site.properties.platform;
 }
 
-/** A covered group contributes its individual views, each opening its own popup. */
+/** Every group contributes its individual views, even when it is the only marker hit. */
 export function webcamChoices(targets: WebcamTarget[]): WebcamTarget[] {
   const choices = new Map<string, WebcamTarget>();
   for (const target of targets) {

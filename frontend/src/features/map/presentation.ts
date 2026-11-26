@@ -6,6 +6,10 @@ import { VISIBILITY_STEPS, classColour, visibilityBandColours, type MarkerSector
 export const ALTITUDE_BANDS: AltitudeBand[] = ["all", "low", "middle", "high"];
 export const SMALL_DOT_RADIUS = 3.2;
 
+export function groupMarkerFactor(cameraCount: number): number {
+  return cameraCount > 1 ? 1.5 : 1;
+}
+
 // Availability is specific to the selected observation parameter, not the provider image.
 export function smallWhiteMarker(camera: Camera): boolean {
   return camera.cls === "white" && (camera.w === "no_record" || camera.w === "stale");
