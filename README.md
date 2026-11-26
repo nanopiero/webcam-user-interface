@@ -47,6 +47,7 @@ frontend/tests/    History and authenticated HTTP contract tests
 frontend/e2e/      Live read-only browser checks and mocked administrator interactions
 config/            Separate backend TOML and frontend JSON examples
 deploy/            Multi-stage application container and Nginx/certificate-renewal examples
+logos/             Original provider logos and their official source attribution
 docs/              Architecture, verified publication limitations, and deployment procedures
 tests/             Unit tests and integration tests against an isolated real PostgreSQL
 compose.yaml       PostgreSQL, API and listener; only localhost:8080 is published

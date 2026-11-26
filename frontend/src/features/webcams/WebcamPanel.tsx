@@ -38,15 +38,16 @@ export default function WebcamPanel({ site, cameraId, parameter, administrator, 
   }, [cameraId, imageRevision]);
   const camera = site.properties.cams.find(item => item.p === cameraId);
   const prediction = detail?.predictions.find(item => item.parameter === parameter);
+  const title = detail?.name ?? camera?.name ?? site.properties.name ?? site.properties.platform;
+  const tags = detail?.tags ?? [];
   const [other] = (["snow", "visibility"] as Parameter[]).filter(item => item !== parameter);
 
   return <aside className="detail-panel" aria-label="Webcam details">
-    <div className="panel-heading"><div><span className="eyebrow">{site.properties.n} webcam{site.properties.n === 1 ? "" : "s"} at this site</span><h2>{site.properties.name ?? site.properties.platform}</h2></div>
+    <div className="panel-heading"><div><span className="eyebrow">{site.properties.n} webcam{site.properties.n === 1 ? "" : "s"} at this site</span><h2 className="camera-name">{title}</h2></div>
       <button className="icon-button" aria-label="Close webcam details" onClick={onClose}>×</button></div>
-    <ProviderView provider={provider} name={detail?.name ?? camera?.name ?? "webcam"} loading={imageLoading} error={imageError} onRefresh={() => setImageRevision(value => value + 1)} />
+    <ProviderView provider={provider} providerKind={detail?.provider_kind} name={title} loading={imageLoading} error={imageError} onRefresh={() => setImageRevision(value => value + 1)} />
     {error && <p className="error" role="alert">{error}</p>}
     {!detail && !error ? <p role="status">Loading webcam…</p> : detail && <>
-      <p className="camera-name">{detail.name}</p>
       <dl className="metadata"><dt>Platform</dt><dd>{detail.platform}</dd><dt>Coordinates</dt><dd>{number(detail.latitude, 5)}°, {number(detail.longitude, 5)}°</dd>
         <dt>Altitude</dt><dd>{detail.altitude == null ? "Not supplied" : `${number(detail.altitude, 0)} m`}</dd><dt>Country</dt><dd>{detail.country ? countryLabel(detail.country) : "Not supplied"}</dd></dl>
       <section className="prediction-summary"><h3>{PARAMETER_LABELS[parameter]} observation</h3>
@@ -73,6 +74,19 @@ export default function WebcamPanel({ site, cameraId, parameter, administrator, 
           <dt>Model</dt><dd>{prediction.model_version ?? "Not supplied"}</dd><dt>Quality code</dt><dd>{prediction.quality_code ?? "Not supplied"}</dd>
         </dl> : <p className="empty">No {parameter} observation received.</p>}
       </section>
+      <details className="webcam-metadata"><summary>Tags ({tags.length}) and stream identifiers</summary>
+        <h4>Published tags</h4>
+        {tags.length ? <ul className="webcam-tags">{tags.map((tag, index) => <li key={`${index}:${tag}`}>{tag}</li>)}</ul>
+          : <p className="muted small">No tags published.</p>}
+        <dl className="metadata stream-metadata">
+          <dt>Source stream ID</dt><dd><code>{detail.source_stream_id ?? "Not published"}</code></dd>
+          <dt>Published derived suffix</dt><dd><code>{detail.derived_suffix ?? "Not published"}</code></dd>
+          <dt>Published processing suffix</dt><dd><code>{detail.processing_suffix ?? "Not published"}</code></dd>
+          <dt>UI derived stream ID</dt><dd><code>{detail.derived_stream_id ?? "Unavailable"}</code></dd>
+          <dt>UI processing stream ID</dt><dd><code>{detail.processing_stream_id}</code></dd>
+        </dl>
+        <p className="muted small">Tags come from the published keywords. UI stream IDs are local identifiers derived from the MQTT identity; the full operational IDs are not published.</p>
+      </details>
       <div className="history-actions"><button className="primary" onClick={() => onHistory(cameraId, detail.name, parameter)}>Open {parameter} history</button>
         <button onClick={() => onHistory(cameraId, detail.name, other)}>Open {other} history</button></div>
       {administrator.session && <form className="blacklist-form" onSubmit={async event => {

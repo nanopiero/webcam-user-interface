@@ -82,6 +82,17 @@ in the right panel and follow the active filters.
 - The webcam popup puts **Latest prediction** first in its observation section, followed by three
   UTC clocks: **Download in E-SOH** (`download_timestamp`), **Processed** (`processing_timestamp`),
   and **UI backend reception** (`received_at`). Missing times remain explicitly unavailable.
+  The selected camera's title appears once, in the header. **Tags and stream identifiers** exposes
+  the stored `properties.keywords`, source stream ID, published derived/processing suffixes and
+  local UI derived/processing IDs. The UI IDs are deterministic hashes, not the unpublished full
+  operational stream IDs. No additional metadata tables or operational lookup are used.
+- The current provider logo appears between **Current webcam** and the image/player for recognized
+  Windy, Skaping, Fintraffic and Météo Centre sources. Original logos and source attribution live
+  in the repository's [`logos/`](../logos/README.md) directory and are bundled as local assets.
+  Supplementary webcams offer a single provider-page link, with other distinct published links
+  kept separately. The current provider image is not linked to a specific processed frame:
+  publications do not supply an immutable image URL, image identifier or content checksum. The
+  popup states that exact correspondence is unverified; no archive or matching service is added.
 - Open snow and visibility histories independently. Snow distinguishes no snow (grey), intermediate
   cover (light blue), undifferentiated snow (blue), and **High snow cover** (solid vivid violet).
   High cover requires a published snow class of `1`/`31` and both thresholds on that same observation.

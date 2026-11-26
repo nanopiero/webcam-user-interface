@@ -129,7 +129,10 @@ export interface ProviderLinks {
 
 export interface WebcamDetail {
   processing_stream_id: string;
+  derived_stream_id: string;
   source_stream_id: string | null;
+  derived_suffix: string | null;
+  processing_suffix: string | null;
   platform: string;
   platform_name: string | null;
   name: string;

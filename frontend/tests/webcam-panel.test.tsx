@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import { getProvider, getWebcam } from "../src/api/client";
 import WebcamPanel from "../src/features/webcams/WebcamPanel";
@@ -10,7 +10,8 @@ it("loads the provider image immediately and distinguishes download, processing 
   vi.mocked(getProvider).mockResolvedValue(provider);
   vi.mocked(getWebcam).mockResolvedValue({ processing_stream_id: "test", name: "Example webcam", latitude: 47, longitude: 2,
     altitude: 100, country: null, platform: "example", platform_name: "Example", source_stream_id: "test", provider_kind: "windy",
-    tags: [], blacklisted: false, predictions: [{ output_id: 1, parameter: "snow",
+    derived_stream_id: "local-derived-test", derived_suffix: "t0", processing_suffix: "p0s2v0",
+    tags: ["outdoor", "mountain"], blacklisted: false, predictions: [{ output_id: 1, parameter: "snow",
       download_timestamp: "2026-11-17T10:00:00Z", acquisition_timestamp: "2026-11-17T10:00:01Z",
       processing_timestamp: "2026-11-17T10:00:02Z", received_at: "2026-11-17T10:00:05Z",
       provider_timestamp: null, publication_timestamp: "2026-11-17T10:00:03Z",
@@ -31,4 +32,14 @@ it("loads the provider image immediately and distinguishes download, processing 
   expect(screen.getByText("Download in E-SOH").nextElementSibling).toHaveTextContent("2026-11-17 10:00:00 UTC");
   expect(screen.getByText("Processed", { exact: true }).nextElementSibling).toHaveTextContent("2026-11-17 10:00:02 UTC");
   expect(screen.getByText("UI backend reception").nextElementSibling).toHaveTextContent("2026-11-17 10:00:05 UTC");
+  expect(screen.getAllByText("Example webcam", { exact: true })).toHaveLength(1);
+  expect(screen.getByRole("img", { name: "Windy logo" })).toBeInTheDocument();
+  expect(screen.getByText(/An exact match to the processed observation is not verified/)).toBeInTheDocument();
+  fireEvent.click(screen.getByText("Tags (2) and stream identifiers"));
+  expect(screen.getByText("outdoor", { exact: true })).toBeVisible();
+  expect(screen.getByText("mountain", { exact: true })).toBeVisible();
+  expect(screen.getByText("UI derived stream ID").nextElementSibling).toHaveTextContent("local-derived-test");
+  expect(screen.getByText("UI processing stream ID").nextElementSibling).toHaveTextContent("test");
+  expect(screen.getByText("Published derived suffix").nextElementSibling).toHaveTextContent("t0");
+  expect(screen.getByText("Published processing suffix").nextElementSibling).toHaveTextContent("p0s2v0");
 });
