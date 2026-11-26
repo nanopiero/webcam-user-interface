@@ -74,13 +74,16 @@ export function classColour(name?: string | null): string {
 
 /**
  * Draw camera sectors, preserving each visibility band's two colours.
- * MapLibre draws the outer outline separately so it stays continuous at small sizes.
+ * The outer outline is part of the image, so overlapping markers remain whole.
  * Ageing sectors retain their coloured centre and have a white outer ring.
  * The same renderer serves single cameras, grouped sites and expanded cameras.
  */
 export interface MarkerSector { lower: string; upper: string; ageing: boolean }
+export const MARKER_RADIUS = 15;
+export interface MarkerOutline { colour: string; width: number }
 
-export function markerImage(sectors: MarkerSector[], size = 34): ImageData {
+export function markerImage(sectors: MarkerSector[], outline: MarkerOutline): ImageData {
+  const size = 46; // Includes transparent padding for fixed-size small-dot outlines.
   const scale = 2;
   const pixels = size * scale;
   const canvas = document.createElement("canvas");
@@ -88,7 +91,7 @@ export function markerImage(sectors: MarkerSector[], size = 34): ImageData {
   canvas.height = pixels;
   const context = canvas.getContext("2d")!;
   const centre = pixels / 2;
-  const radius = centre - 2 * scale;
+  const radius = MARKER_RADIUS * scale;
   const step = (Math.PI * 2) / sectors.length;
   const wedge = (radius: number, from: number, to: number) => {
     context.beginPath();
@@ -126,6 +129,12 @@ export function markerImage(sectors: MarkerSector[], size = 34): ImageData {
     }
     context.restore();
   });
+  // Place the stroke outside the fill, preserving the coloured disc's radius.
+  context.beginPath();
+  context.arc(centre, centre, radius + outline.width * scale / 2, 0, Math.PI * 2);
+  context.lineWidth = outline.width * scale;
+  context.strokeStyle = outline.colour;
+  context.stroke();
   return context.getImageData(0, 0, pixels, pixels);
 }
 

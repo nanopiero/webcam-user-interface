@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import type { Camera, SiteFeature } from "../src/api/contracts";
-import { cameraSector, markerScale, needsSprite, siteForAltitude, siteForCameras, siteSectors, smallWhiteMarker } from "../src/features/map/presentation";
+import { cameraSector, markerScale, siteForAltitude, siteForCameras, siteSectors, smallWhiteMarker } from "../src/features/map/presentation";
 import { CLASS_COLOURS, HIGH_SNOW_COLOUR, classColour } from "../src/features/map/icons";
 
 const camera = (p: string, altitude: number | null, cls: string): Camera => ({
@@ -70,7 +70,6 @@ it("keeps each camera's freshness in same-class groups, country/altitude views a
   const sectors = siteSectors(grouped, 12);
   expect(sectors.map(sector => sector.ageing)).toEqual([false, true, false]);
   expect(sectors.map(sector => sector.lower)).toEqual([HIGH_SNOW_COLOUR, HIGH_SNOW_COLOUR, "#ffffff"]);
-  expect(needsSprite(sectors)).toBe(true);
   expect(cameraSector(ageing)).toEqual(sectors[1]);
   expect(siteSectors(siteForAltitude(grouped, "low", "snow")!, 12)[0].ageing).toBe(false);
   expect(siteSectors(siteForAltitude(grouped, "middle", "snow")!, 12).map(sector => sector.ageing)).toEqual([true, false]);

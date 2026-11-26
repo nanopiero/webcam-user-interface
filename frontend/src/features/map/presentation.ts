@@ -27,10 +27,6 @@ export function siteSectors(site: SiteFeature, limit: number): MarkerSector[] {
   return [cameraSector({ ...cams[0], cls })];
 }
 
-export function needsSprite(sectors: MarkerSector[]): boolean {
-  return sectors.length > 1 || sectors.some(sector => sector.ageing || sector.lower !== sector.upper);
-}
-
 function visibilityClass(lower: number, upper: number): string {
   const ladder = [...VISIBILITY_STEPS.map(([from]) => from), 20000];
   let floor = [...ladder].reverse().find(value => value <= lower) ?? 0;
@@ -74,4 +70,11 @@ export function siteForCameras(site: SiteFeature, cams: Camera[], parameter: Par
 
 export function markerScale(value?: number): number {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.min(3, value) : 0.65;
+}
+
+export function markerZoomScale(zoom: number): number {
+  if (zoom <= 3) return 0.55;
+  if (zoom < 8) return 0.55 + (zoom - 3) * 0.06;
+  if (zoom < 12) return 0.85 + (zoom - 8) * 0.0375;
+  return 1;
 }

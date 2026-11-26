@@ -45,8 +45,16 @@ in the right panel and follow the active filters.
   The left panel contains altitude controls rather than a full webcam list: **All altitudes**,
   **Below 500 m**, **500–1,000 m**, **Above 1,000 m**. The middle band includes both endpoints.
   Both WEOW and supplementary points use the filter; unknown altitudes appear under All.
-- WEOW icons use 65% of their original width/height, with native one-pixel outlines that stay
-  smooth when zooming; the small black dots and legend swatches keep
+- Overlapping markers keep their fill, ageing ring and outline together in one cached image.
+  Drawing order is stable by marker identity within each layer; additional dots remain above site
+  markers, and expanded camera views above both. Clicking several markers opens a compact chooser
+  with each webcam's name and colour, including covered tiny dots and individual views of groups.
+  Choosing a webcam opens its own popup. A single marker retains its usual click behaviour.
+  The chooser uses already loaded, currently visible data and the existing four-pixel tolerance;
+  hidden webcams and transparent image padding do not enlarge the selection. Escape, map movement,
+  filter changes or the close button dismiss it. Only choosing a webcam requests its details/image.
+- WEOW icons use 65% of their original width/height, with their outlines included in the cached
+  image; the small black dots and legend swatches keep
   their sizes. **WEOW webcams**, **Additional webcams**, **Hide white markers**, altitude controls
   and search operate on the downloaded camera data. They update cached map filters/visibility
   without requesting webcam data or rebuilding the map. Manual/automatic refresh and changing

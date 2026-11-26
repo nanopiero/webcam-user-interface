@@ -4,11 +4,14 @@ import type { ExpressionSpecification, GeoJSONSource, Map as LibreMap } from "ma
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import type { FeatureCollection, Point } from "geojson";
 import type { AltitudeBand, BorderVisibility, FrontendConfiguration, Parameter, SiteFeature, SupplementaryFeature } from "../../api/contracts";
-import { classColour, markerImage } from "./icons";
+import { MARKER_RADIUS, classColour } from "./icons";
 import { addBorderLayers, showBorderLayers } from "./borders";
 import { initialBorderVisibility } from "./roi";
-import { ALTITUDE_BANDS, SMALL_DOT_RADIUS, cameraSector, markerScale, needsSprite, siteForAltitude, siteSectors, smallWhiteMarker } from "./presentation";
+import { ALTITUDE_BANDS, SMALL_DOT_RADIUS, cameraSector, markerScale, markerZoomScale, siteForAltitude, siteSectors, smallWhiteMarker } from "./presentation";
 import { expandedCameraPositions, groupMarkerFactor } from "./expansion";
+import { markerSprite } from "./sprites";
+import { markersAtPoint, webcamChoices, type ClickMarker, type WebcamTarget } from "./overlap";
+import OverlapMenu from "./OverlapMenu";
 
 // MapLibre 6 requires an explicit bundled worker URL when used with Vite.
 maplibregl.setWorkerUrl(workerUrl);
@@ -63,6 +66,18 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [visibleSites, setVisibleSites] = useState(0);
+  const [chooser, setChooser] = useState<{ choices: WebcamTarget[]; left: number; top: number } | null>(null);
+
+  function choose(target: WebcamTarget) {
+    setChooser(null);
+    if (target.kind === "supplementary") onSupplementaryRef.current(target.webcam);
+    else if (target.camera) onSelectRef.current(target.site, target.camera.p);
+    else if (target.site.properties.n > 1) onExpandRef.current(
+      expandedRef.current?.properties.id === target.site.properties.id ? null : target.site);
+    else onSelectRef.current(target.site);
+  }
+
+  useEffect(() => { setChooser(null); }, [sites, supplementary, expanded, parameter, altitudeBand]);
 
   useEffect(() => {
     if (!container.current) return;
@@ -93,8 +108,8 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
     });
     instance.on("idle", () => {
       if (instance.getLayer("sites")) {
-        const visible = instance.queryRenderedFeatures({ layers: ["sites", "site-outlines", "supplementary", "cameras", "camera-outlines"] });
-        setVisibleSites(new Set(visible.map(feature => feature.properties.id)).size);
+        const visible = instance.queryRenderedFeatures({ layers: ["sites", "supplementary", "cameras"] });
+        setVisibleSites(new Set(visible.map(feature => `${feature.source}:${feature.properties.id}`)).size);
       }
     });
     instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
@@ -106,17 +121,15 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
       instance.addSource("sites", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       const scale = markerScale(configuration.map.marker_scale);
       instance.addLayer({ id: "sites", type: "symbol", source: "sites", layout: {
-        "icon-image": ["get", "icon_all"], "icon-allow-overlap": true,
-        "icon-size": markerSize(scale, 1, "factor_all"),
-      } });
-      instance.addLayer({ id: "site-outlines", type: "circle", source: "sites", paint: {
-        "circle-radius": markerSize(scale, 15, "factor_all", "small_all"),
-        "circle-color": "#ffffff", "circle-stroke-color": "#222222", "circle-stroke-width": 1,
+        "icon-image": ["get", "icon_all"], "icon-allow-overlap": true, "icon-ignore-placement": true,
+        "symbol-sort-key": ["get", "order"], "symbol-z-order": "source",
+        "icon-size": markerSize(scale, 1, "factor_all", "small_all"),
       } });
       instance.addSource("supplementary", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-      instance.addLayer({ id: "supplementary", type: "circle", source: "supplementary", paint: {
-        "circle-radius": SMALL_DOT_RADIUS, "circle-color": "#111111", "circle-stroke-width": 0.6,
-        "circle-stroke-color": "#ffffff",
+      instance.addLayer({ id: "supplementary", type: "symbol", source: "supplementary", layout: {
+        "icon-image": ["get", "icon"], "icon-size": SMALL_DOT_RADIUS / MARKER_RADIUS,
+        "icon-allow-overlap": true, "icon-ignore-placement": true,
+        "symbol-sort-key": ["get", "order"], "symbol-z-order": "source",
       } });
       instance.addSource("selection", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       instance.addLayer({ id: "selection", type: "circle", source: "selection", paint: {
@@ -128,39 +141,47 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
         "line-color": "#555555", "line-width": 1.5, "line-dasharray": [0.75, 1.5],
       } });
       instance.addSource("expanded-cameras", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-      instance.addLayer({ id: "cameras", type: "symbol", source: "expanded-cameras", filter: ["get", "sprite"], layout: {
-        "icon-image": ["get", "icon"], "icon-size": markerSize(scale), "icon-allow-overlap": true,
+      instance.addLayer({ id: "cameras", type: "symbol", source: "expanded-cameras", layout: {
+        "icon-image": ["get", "icon"], "icon-size": markerSize(scale, 1, undefined, "small"),
+        "icon-allow-overlap": true, "icon-ignore-placement": true,
+        "symbol-sort-key": ["get", "order"], "symbol-z-order": "source",
       } });
-      instance.addLayer({ id: "camera-outlines", type: "circle", source: "expanded-cameras", paint: {
-        "circle-radius": markerSize(scale, 15, undefined, "small"),
-        "circle-color": ["case", ["get", "sprite"], "rgba(0,0,0,0)", ["get", "fill"]],
-        "circle-stroke-color": ["case", ["get", "uncertain"], "#c62828", "#222222"],
-        "circle-stroke-width": ["case", ["get", "uncertain"], 1.6, 1],
-      } });
-      instance.on("mouseenter", "sites", () => { instance.getCanvas().style.cursor = "pointer"; });
-      instance.on("mouseleave", "sites", () => { instance.getCanvas().style.cursor = ""; });
-      instance.on("mouseenter", "site-outlines", () => { instance.getCanvas().style.cursor = "pointer"; });
-      instance.on("mouseleave", "site-outlines", () => { instance.getCanvas().style.cursor = ""; });
-      instance.on("mouseenter", "supplementary", () => { instance.getCanvas().style.cursor = "pointer"; });
-      instance.on("mouseleave", "supplementary", () => { instance.getCanvas().style.cursor = ""; });
-      for (const layer of ["cameras", "camera-outlines"]) {
+      for (const layer of ["sites", "supplementary", "cameras"]) {
         instance.on("mouseenter", layer, () => { instance.getCanvas().style.cursor = "pointer"; });
         instance.on("mouseleave", layer, () => { instance.getCanvas().style.cursor = ""; });
       }
+      instance.on("movestart", () => setChooser(null));
       instance.on("click", event => {
-        const bounds: [[number, number], [number, number]] = [[event.point.x - 4, event.point.y - 4], [event.point.x + 4, event.point.y + 4]];
-        const cameraId = instance.queryRenderedFeatures(bounds, { layers: ["cameras", "camera-outlines"] })[0]?.properties?.p;
-        if (cameraId && expandedRef.current) { onSelectRef.current(expandedRef.current, cameraId); return; }
-        const additionalId = instance.queryRenderedFeatures(bounds, { layers: ["supplementary"] })[0]?.properties?.id;
-        const additional = supplementaryRef.current.find(item => item.properties.id === additionalId);
-        if (additional) { onSupplementaryRef.current(additional); return; }
-        const id = instance.queryRenderedFeatures(bounds, { layers: ["sites", "site-outlines"] })[0]?.properties?.id;
-        const site = sitesRef.current.find(item => item.properties.id === id);
-        if (site) {
-          if (site.properties.n > 1) onExpandRef.current(expandedRef.current?.properties.id === site.properties.id ? null : site);
-          else onSelectRef.current(site);
+        const normal = scale * markerZoomScale(instance.getZoom());
+        const radius = (small: boolean, group = 1, uncertain = false, additional = false) => small
+          ? SMALL_DOT_RADIUS + (additional ? 0.6 : uncertain ? 1.6 : 1)
+          : MARKER_RADIUS * normal * group + (uncertain ? 3.2 : 2) * normal;
+        const markers: ClickMarker[] = [];
+        for (const site of sitesRef.current) {
+          if (site.properties.id === expandedRef.current?.properties.id) continue;
+          markers.push({ centre: instance.project(site.geometry.coordinates),
+            radius: radius(site.properties.cams.every(smallWhiteMarker), groupMarkerFactor(site.properties.n), site.properties.u),
+            target: { kind: "observed", site } });
+        }
+        for (const webcam of supplementaryRef.current) markers.push({ centre: instance.project(webcam.geometry.coordinates),
+          radius: radius(true, 1, false, true), target: { kind: "supplementary", webcam } });
+        const expandedSite = expandedRef.current;
+        if (expandedSite) for (const point of expandedCameraPositions(expandedSite,
+          coordinates => instance.project(coordinates), pixel => instance.unproject([pixel.x, pixel.y]).toArray())) {
+          markers.push({ centre: instance.project(point.coordinates), radius: radius(smallWhiteMarker(point.camera), 1, point.camera.u),
+            target: { kind: "observed", site: expandedSite, camera: point.camera } });
+        }
+        const hits = markersAtPoint(markers, event.point);
+        if (hits.length === 1) { choose(hits[0]); return; }
+        if (hits.length > 1) {
+          const choices = webcamChoices(hits);
+          if (choices.length === 1) { choose(choices[0]); return; }
+          setChooser({ choices,
+            left: Math.max(8, Math.min(event.point.x + 12, instance.getContainer().clientWidth - 308)),
+            top: Math.max(8, Math.min(event.point.y + 12, instance.getContainer().clientHeight - 280)) });
           return;
         }
+        setChooser(null);
         onExpandRef.current(null);
       });
       setReady(true);
@@ -171,33 +192,33 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
   useEffect(() => {
     const instance = map.current;
     if (!ready || !instance) return;
-    const features = allSites.map(site => {
+    const features = [...allSites].sort((a, b) => a.properties.id.localeCompare(b.properties.id)).map((site, order) => {
       const icons: Record<string, string | boolean | number> = {};
       for (const altitude of ALTITUDE_BANDS) {
         const variant = siteForAltitude(site, altitude, parameter);
         if (!variant) continue;
         const properties = variant.properties;
         const sectors = siteSectors(variant, configuration.pie_sector_limit);
-        const icon = JSON.stringify(sectors);
-        if (!instance.hasImage(icon)) {
-          instance.addImage(icon, markerImage(sectors), { pixelRatio: 2 });
-        }
-        icons[`icon_${altitude}`] = icon;
-        icons[`factor_${altitude}`] = groupMarkerFactor(properties.n);
-        icons[`small_${altitude}`] = properties.cams.every(smallWhiteMarker);
-        icons[`uncertain_${altitude}`] = properties.u;
-        icons[`fill_${altitude}`] = classColour(properties.cls);
-        icons[`sprite_${altitude}`] = needsSprite(sectors);
+        const small = properties.cams.every(smallWhiteMarker);
+        const group = groupMarkerFactor(properties.n);
+        icons[`icon_${altitude}`] = markerSprite(instance, sectors, { small, group, uncertain: properties.u });
+        icons[`factor_${altitude}`] = group;
+        icons[`small_${altitude}`] = small;
       }
       return { type: "Feature" as const, geometry: site.geometry,
-        properties: { id: site.properties.id, ...icons } };
+        properties: { id: site.properties.id, order, ...icons } };
     });
     (instance.getSource("sites") as GeoJSONSource).setData({ type: "FeatureCollection", features });
   }, [allSites, parameter, ready, configuration.pie_sector_limit]);
 
   useEffect(() => {
-    if (!ready || !map.current) return;
-    (map.current.getSource("supplementary") as GeoJSONSource).setData({ type: "FeatureCollection", features: allSupplementary });
+    const instance = map.current;
+    if (!ready || !instance) return;
+    const icon = markerSprite(instance, [{ lower: "#111111", upper: "#111111", ageing: false }], { small: true, supplementary: true });
+    const features = [...allSupplementary].sort((a, b) => a.properties.id.localeCompare(b.properties.id)).map((feature, order) => ({
+      ...feature, properties: { ...feature.properties, icon, order },
+    }));
+    (instance.getSource("supplementary") as GeoJSONSource).setData({ type: "FeatureCollection", features });
   }, [allSupplementary, ready]);
 
   // Toggle cached features/layers. No source replacement, map recreation, or HTTP request.
@@ -205,17 +226,11 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
     const instance = map.current;
     if (!ready || !instance) return;
     instance.setLayoutProperty("sites", "visibility", showObserved ? "visible" : "none");
-    instance.setLayoutProperty("site-outlines", "visibility", showObserved ? "visible" : "none");
-    for (const layer of ["cameras", "camera-outlines", "camera-links"]) instance.setLayoutProperty(layer, "visibility", showObserved ? "visible" : "none");
+    for (const layer of ["cameras", "camera-links"]) instance.setLayoutProperty(layer, "visibility", showObserved ? "visible" : "none");
     instance.setLayoutProperty("sites", "icon-image", ["coalesce", ["image", ["get", `icon_${altitudeBand}`]], ["image", ["get", "icon_all"]]]);
     const visibleSites: ExpressionSpecification = ["all", ["in", ["get", "id"], ["literal", sites.map(site => site.properties.id)]], ["!=", ["get", "id"], expanded?.properties.id ?? ""]];
-    instance.setFilter("sites", ["all", visibleSites, ["boolean", ["get", `sprite_${altitudeBand}`], false]]);
-    instance.setFilter("site-outlines", visibleSites);
-    instance.setLayoutProperty("sites", "icon-size", markerSize(markerScale(configuration.map.marker_scale), 1, `factor_${altitudeBand}`));
-    instance.setPaintProperty("site-outlines", "circle-radius", markerSize(markerScale(configuration.map.marker_scale), 15, `factor_${altitudeBand}`, `small_${altitudeBand}`));
-    instance.setPaintProperty("site-outlines", "circle-color", ["case", ["boolean", ["get", `sprite_${altitudeBand}`], false], "rgba(0,0,0,0)", ["coalesce", ["get", `fill_${altitudeBand}`], "#ffffff"]]);
-    instance.setPaintProperty("site-outlines", "circle-stroke-color", ["case", ["boolean", ["get", `uncertain_${altitudeBand}`], false], "#c62828", "#222222"]);
-    instance.setPaintProperty("site-outlines", "circle-stroke-width", ["case", ["boolean", ["get", `uncertain_${altitudeBand}`], false], 1.6, 1]);
+    instance.setFilter("sites", visibleSites);
+    instance.setLayoutProperty("sites", "icon-size", markerSize(markerScale(configuration.map.marker_scale), 1, `factor_${altitudeBand}`, `small_${altitudeBand}`));
     instance.setLayoutProperty("supplementary", "visibility", showSupplementary ? "visible" : "none");
     instance.setFilter("supplementary", ["in", ["get", "id"], ["literal", supplementary.map(item => item.properties.id)]]);
   }, [ready, sites, supplementary, altitudeBand, showObserved, showSupplementary, expanded, configuration.map.marker_scale]);
@@ -231,13 +246,12 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
       const points = expanded ? expandedCameraPositions(expanded, coordinates => instance.project(coordinates),
         pixel => instance.unproject([pixel.x, pixel.y]).toArray()) : [];
       (instance.getSource("expanded-cameras") as GeoJSONSource).setData({ type: "FeatureCollection",
-        features: points.map(({ camera, coordinates }) => {
+        features: [...points].sort((a, b) => a.camera.p.localeCompare(b.camera.p)).map(({ camera, coordinates }, order) => {
           const sectors = [cameraSector(camera)];
-          const icon = JSON.stringify(sectors);
-          if (!instance.hasImage(icon)) instance.addImage(icon, markerImage(sectors), { pixelRatio: 2 });
+          const small = smallWhiteMarker(camera);
+          const icon = markerSprite(instance, sectors, { small, uncertain: camera.u });
           return { type: "Feature" as const, geometry: { type: "Point" as const, coordinates },
-            properties: { id: expanded!.properties.id, p: camera.p, icon, fill: classColour(camera.cls),
-              uncertain: camera.u, small: smallWhiteMarker(camera), sprite: needsSprite(sectors) } };
+            properties: { id: expanded!.properties.id, p: camera.p, icon, order, small } };
         }) });
       (instance.getSource("camera-links") as GeoJSONSource).setData({ type: "FeatureCollection",
         features: points.map(({ coordinates }) => ({ type: "Feature" as const, properties: {},
@@ -268,6 +282,8 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
     <button className="map-home" title="Return to the initial map extent" onClick={() => map.current?.easeTo({
       center: configuration.map.center, zoom: configuration.map.zoom, duration: 600,
     })}>Reset view</button>
+    {chooser && <OverlapMenu choices={chooser.choices} position={{ left: chooser.left, top: chooser.top }}
+      onChoose={choose} onClose={() => setChooser(null)} />}
     {expanded && showObserved && <section className="camera-picker" aria-label="Cameras at selected site">
       <div className="panel-heading"><strong>{expanded.properties.n} webcam views</strong><button className="icon-button" aria-label="Collapse webcam group" onClick={() => onExpand(null)}>×</button></div>
       <div className="camera-choices">{expanded.properties.cams.map((camera, index) => <button key={camera.p}
