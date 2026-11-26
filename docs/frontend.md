@@ -32,7 +32,9 @@ in the right panel and follow the active filters.
   are currently assumed qualified (2), so the toggle leaves visibility results unchanged.
   Refresh retains the qualification, country and altitude selections. Webcam metadata shows
   qualification; stored histories retain their published predictions and qualification codes.
-- Select a site on the map, or enter a name/platform in the compact search and select a result.
+- Select a site on the map, or search by name, platform, provider or source-stream ID.
+  Supplementary webcams also match their provider hostname. Search uses the downloaded data and
+  respects the selected countries, bounding box and display filters; it does not load hidden countries.
   Sites are grouped by published platform identity. A group with several views uses a disc 50%
   larger than a single-camera marker, following the admin UI's 9:6 size ratio. Every map click uses
   the same rule: one webcam opens its popup directly; several webcams open **Choose a webcam · N**.
@@ -86,7 +88,7 @@ in the right panel and follow the active filters.
   the stored `properties.keywords`, source stream ID, published derived/processing suffixes and
   local UI derived/processing IDs. The UI IDs are deterministic hashes, not the unpublished full
   operational stream IDs. No additional metadata tables or operational lookup are used.
-- The current provider logo appears between **Current webcam** and the image/player for recognized
+- The current provider logo appears to the right of **Current image** on the same compact header row for recognized
   Windy, Skaping, Fintraffic and Météo Centre sources. Original logos and source attribution live
   in the repository's [`logos/`](../logos/README.md) directory and are bundled as local assets.
   Supplementary webcams offer a single provider-page link, with other distinct published links

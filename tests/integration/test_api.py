@@ -74,6 +74,19 @@ def test_country_configuration_drives_the_frontend_without_a_second_country_list
     assert api.get("/api/config").json()["filters"]["allowed_countries"] == config["countries"]
 
 
+def test_map_exposes_skaping_provider_and_source_for_search_without_inventing_a_country(api, database, feature):
+    feature["properties"]["instrument"] = "ska123POV4_snow_t0_g0p0s0"
+    feature["properties"]["platform"] = "example-platform"
+    feature["properties"]["title"] = "Mountain camera"
+    assert seed(database, feature).accepted == 1
+    params = {"parameter": "snow", "at": "2026-11-17T10:10:00Z"}
+    camera = api.get("/api/map", params=params).json()["features"][0]["properties"]["cams"][0]
+    assert camera["provider_kind"] == "skaping"
+    assert camera["source_stream_id"] == "ska123POV4"
+    assert camera["country"] is None
+    assert api.get("/api/map", params={**params, "countries": "FR", "include_unknown_country": False}).json()["features"] == []
+
+
 def test_country_requests_and_deployment_bbox_filter_previously_stored_webcams(api, database, feature):
     from copy import deepcopy
 

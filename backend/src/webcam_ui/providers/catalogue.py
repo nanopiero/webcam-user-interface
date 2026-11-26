@@ -4,6 +4,7 @@ import csv
 import json
 import math
 from threading import Lock
+from urllib.parse import urlsplit
 
 from webcam_ui.domain.geography import RadiusIndex
 from webcam_ui.ingestion.parser import safe_provider_url
@@ -104,7 +105,8 @@ class SupplementaryCatalogue:
             if bbox and not (bbox[0] <= lon <= bbox[2] and bbox[1] <= lat <= bbox[3]):
                 continue
             features.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": [lon, lat]},
-                             "properties": {key: item[key] for key in ("id", "name", "altitude", "source_layer_name")}})
+                             "properties": {**{key: item[key] for key in ("id", "name", "altitude", "source_layer_name")},
+                                            "provider_host": urlsplit(item["provider_url"]).hostname if item["provider_url"] else None}})
         return {"type": "FeatureCollection", "enabled": self.settings.enabled,
                 "minimum_distance_metres": self.settings.minimum_distance_metres,
                 "counts": {"csv_webcams": len(items), "visible": len(features), "now_near_database": suppressed},

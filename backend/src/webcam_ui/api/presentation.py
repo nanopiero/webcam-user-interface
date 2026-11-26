@@ -33,6 +33,7 @@ def build_map(rows: list[dict], parameter: str, at: datetime, freshness: Freshne
         if age_band == "expired":
             reason = "stale"
         camera = {"p": row["processing_stream_id"], "name": row["name"],
+                  "provider_kind": row.get("provider_kind"), "source_stream_id": row.get("source_stream_id"),
                   "x": row["longitude"], "y": row["latitude"],
                   "altitude": row.get("altitude"),
                   "country": row.get("country"),

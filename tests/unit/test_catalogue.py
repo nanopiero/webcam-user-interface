@@ -30,15 +30,17 @@ def test_geographic_radius_is_strict_at_250m_and_handles_dateline_and_poles():
 def test_catalogue_preserves_metadata_and_missing_altitude_without_inventing_predictions(tmp_path):
     path = tmp_path / "webcams.csv"
     write_catalogue(path, [{"id": "external-example", "name": "Webcam, north", "lat": 47.1, "lon": 2.5,
+                            "provider_url": "https://www.skaping.com/example",
                             "altitude": "", "metadata_json": json.dumps({"description": "line one\nline two", "custom": "kept"}),
                             "links_json": json.dumps(["https://example.org/camera", "javascript:alert(1)"])}])
     service = SupplementaryCatalogue(SupplementaryWebcamSettings(enabled=True, csv_file=path))
     data = service.collection([])
     assert data["features"][0]["geometry"]["coordinates"] == [2.5, 47.1]
     assert data["features"][0]["properties"]["altitude"] is None
+    assert data["features"][0]["properties"]["provider_host"] == "www.skaping.com"
     detail = service.detail("external-example")
     assert detail["metadata"]["custom"] == "kept"
-    assert detail["links"] == ["https://example.org/camera"]
+    assert detail["links"] == ["https://www.skaping.com/example", "https://example.org/camera"]
     assert "predictions" not in detail
     assert "snow_class" not in detail
 

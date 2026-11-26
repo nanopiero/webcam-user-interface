@@ -102,13 +102,14 @@ function Observations({ configuration }: { configuration: FrontendConfiguration 
       return variant ? [variant] : [];
     });
     return variants.filter(site => (!hideWhite || site.properties.cls !== "white") && (!query ||
-      searchable([site.properties.name, site.properties.platform, ...site.properties.cams.map(camera => camera.name)].join(" ")).includes(query)))
+      searchable([site.properties.name, site.properties.platform,
+        ...site.properties.cams.flatMap(camera => [camera.name, camera.provider_kind, camera.source_stream_id])].join(" ")).includes(query)))
       .sort((a, b) => (a.properties.name ?? a.properties.platform).localeCompare(b.properties.name ?? b.properties.platform));
   }, [countrySites, data, search, hideWhite, showObserved, altitudeBand, parameter]);
   const selected = sites.find(site => site.properties.id === selectedId) ?? null;
   const additional = useMemo(() => {
     const query = searchable(search.trim());
-    return showSupplementary ? (supplementary?.features ?? []).filter(item => matchesAltitude(item.properties.altitude, altitudeBand) && (!query || searchable(`${item.properties.name} ${item.properties.source_layer_name}`).includes(query))) : [];
+    return showSupplementary ? (supplementary?.features ?? []).filter(item => matchesAltitude(item.properties.altitude, altitudeBand) && (!query || searchable(`${item.properties.name} ${item.properties.source_layer_name} ${item.properties.provider_host ?? ""}`).includes(query))) : [];
   }, [supplementary, search, showSupplementary, altitudeBand]);
   const selectedAdditional = additional.find(item => item.properties.id === supplementaryId) ?? null;
   const count = sites.reduce((sum, site) => sum + site.properties.n, 0);
@@ -138,7 +139,7 @@ function Observations({ configuration }: { configuration: FrontendConfiguration 
     {supplementaryError && <div className="error-banner" role="alert">Additional webcams: {supplementaryError}<button onClick={() => setRevision(value => value + 1)}>Retry</button></div>}
     <div className={`workspace ${diagrams.length ? "with-history" : ""}`}>
       <aside className={`sidebar ${explorerOpen ? "sidebar-open" : ""}`} aria-label="Webcam explorer">
-        <div className="sidebar-search"><label htmlFor="webcam-search">Find a webcam</label><input id="webcam-search" type="search" placeholder="Name or platform…" value={search} onChange={event => setSearch(event.target.value)} />
+        <div className="sidebar-search"><label htmlFor="webcam-search">Find a webcam</label><input id="webcam-search" type="search" placeholder="Name, ID or provider…" value={search} onChange={event => setSearch(event.target.value)} />
           <label className="checkbox"><input type="checkbox" checked={showObserved} onChange={event => setShowObserved(event.target.checked)} />WEOW webcams</label>
           <label className="checkbox"><input type="checkbox" checked={qualifiedOnly} onChange={event => { setQualifiedOnly(event.target.checked); setSelectedId(null); }} />Qualified scenes only</label>
           <label className="checkbox"><input type="checkbox" checked={hideWhite} onChange={event => setHideWhite(event.target.checked)} />Hide white markers</label></div>

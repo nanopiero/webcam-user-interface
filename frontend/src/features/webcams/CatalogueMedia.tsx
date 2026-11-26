@@ -20,8 +20,8 @@ export default function CatalogueMedia({ id, name, providerPageURL }: { id: stri
   const pageURL = provider?.page_url ?? providerPageURL;
   const failedMedia = () => { if (media) { setFailed(previous => [...previous, media.url]); setSelected(0); } };
   return <section className="provider provider-preview" aria-label="Current supplementary provider view">
-    <div className="provider-heading"><h3>Current webcam</h3></div>
-    <ProviderLogo urls={[pageURL, media?.url]} />
+    <div className="provider-heading"><h3>Current image</h3>
+      <ProviderLogo urls={[pageURL, media?.url]} /></div>
     {!provider && !error && <p className="muted small" role="status">Loading the provider view…</p>}
     {error && <p className="muted small">{error}</p>}
     {available.length > 1 && <label className="provider-selector">Provider view<select value={Math.min(selected, available.length - 1)} onChange={event => setSelected(Number(event.target.value))}>

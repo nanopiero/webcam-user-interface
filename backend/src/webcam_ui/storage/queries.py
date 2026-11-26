@@ -37,7 +37,7 @@ class Queries:
         with self.database.connection() as connection:
             return connection.execute(f"""
                 SELECT p.processing_stream_id, p.name, p.provider_kind,
-                       d.naming_authority, d.platform, d.platform_name,
+                       d.naming_authority, d.platform, d.platform_name, d.source_stream_id,
                        COALESCE(latest.latitude, p.latitude) AS latitude,
                        COALESCE(latest.longitude, p.longitude) AS longitude,
                        COALESCE(latest.altitude, p.altitude) AS altitude,

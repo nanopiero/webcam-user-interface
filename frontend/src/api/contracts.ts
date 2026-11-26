@@ -24,6 +24,8 @@ export interface FrontendConfiguration {
 export interface Camera {
   p: string;
   name: string;
+  provider_kind?: string | null;
+  source_stream_id?: string | null;
   x: number;
   y: number;
   altitude: number | null;
@@ -73,7 +75,7 @@ export interface MapPayload {
 export interface SupplementaryFeature {
   type: "Feature";
   geometry: { type: "Point"; coordinates: [number, number] };
-  properties: { id: string; name: string; altitude: number | null; source_layer_name: string };
+  properties: { id: string; name: string; altitude: number | null; source_layer_name: string; provider_host?: string | null };
 }
 export interface SupplementaryPayload {
   type: "FeatureCollection";
