@@ -28,7 +28,8 @@ def configuration(request: Request):
     settings = request.app.state.settings
     return {"parameters": ["snow", "visibility"],
             "roi": settings.roi.model_dump(),
-            "max_prediction_age_minutes": settings.api.prediction_max_age_minutes,
+            "freshness": {parameter: settings.api.freshness_for(parameter).model_dump()
+                          for parameter in ("snow", "visibility")},
             "diagram": {"initial_days": 1, "max_days": settings.api.maximum_history_days},
             "filters": settings.filters.model_dump(),
             "frontend_configuration": "/frontend-config.json"}

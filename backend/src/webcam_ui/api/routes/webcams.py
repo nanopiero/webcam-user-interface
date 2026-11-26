@@ -48,6 +48,7 @@ def map_data(request: Request, parameter: Parameter = "snow", at: str | None = N
             raise HTTPException(422, "bbox must be west,south,east,north") from None
     deployment = request.app.state.settings
     settings = deployment.api
+    freshness = settings.freshness_for(parameter)
     selected_countries = deployment.filters.allowed_countries
     if countries is not None:
         selected_countries = list(dict.fromkeys(value.strip().upper() for value in countries.split(","))) if countries.strip() else []
@@ -55,13 +56,13 @@ def map_data(request: Request, parameter: Parameter = "snow", at: str | None = N
             raise HTTPException(422, "countries must be listed in filters.allowed_countries")
     bounds = deployment_bounds(bounds, deployment.filters.bounding_box)
     if empty_bounds(bounds):
-        return build_map([], parameter, at_time, settings.prediction_max_age_minutes, qualified_only)
+        return build_map([], parameter, at_time, freshness, qualified_only)
     rows = request.app.state.queries.map_rows(parameter, at_time, settings.maximum_map_cameras,
                                             bounds, altitude_band,
                                             selected_countries, include_unknown_country, qualified_only)
     if len(rows) > settings.maximum_map_cameras:
         raise HTTPException(413, "map contains too many cameras; request a smaller bbox")
-    return build_map(rows, parameter, at_time, settings.prediction_max_age_minutes, qualified_only)
+    return build_map(rows, parameter, at_time, freshness, qualified_only)
 
 
 @router.get("/webcams/{processing_stream_id}")

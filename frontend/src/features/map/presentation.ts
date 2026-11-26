@@ -1,7 +1,7 @@
 import type { AltitudeBand, Camera, Parameter, SiteFeature } from "../../api/contracts";
 import { matchesAltitude } from "./AltitudeFilter";
 import type { CountrySelection } from "./countries";
-import { VISIBILITY_STEPS } from "./icons";
+import { VISIBILITY_STEPS, classColour, visibilityBandColours, type MarkerSector } from "./icons";
 
 export const ALTITUDE_BANDS: AltitudeBand[] = ["all", "low", "middle", "high"];
 export const SMALL_DOT_RADIUS = 3.2;
@@ -9,6 +9,26 @@ export const SMALL_DOT_RADIUS = 3.2;
 // Availability is specific to the selected observation parameter, not the provider image.
 export function smallWhiteMarker(camera: Camera): boolean {
   return camera.cls === "white" && (camera.w === "no_record" || camera.w === "stale");
+}
+
+export function cameraSector(camera: Camera): MarkerSector {
+  const band = visibilityBandColours(camera.cls);
+  return { lower: band?.lower ?? classColour(camera.cls), upper: band?.upper ?? classColour(camera.cls),
+    ageing: camera.freshness === "ageing" && camera.cls !== "white" };
+}
+
+/** Mixed ages need camera sectors even when every camera reports the same class. */
+export function siteSectors(site: SiteFeature, limit: number): MarkerSector[] {
+  const { cams, cls, tie } = site.properties;
+  const ages = new Set(cams.map(camera => camera.freshness ?? "fresh"));
+  if (tie || (cams.length > 1 && (ages.size > 1 || ages.has("ageing")))) {
+    return cams.slice(0, limit).map(cameraSector);
+  }
+  return [cameraSector({ ...cams[0], cls })];
+}
+
+export function needsSprite(sectors: MarkerSector[]): boolean {
+  return sectors.length > 1 || sectors.some(sector => sector.ageing || sector.lower !== sector.upper);
 }
 
 function visibilityClass(lower: number, upper: number): string {

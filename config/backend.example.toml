@@ -65,8 +65,16 @@ frontend_dist_directory = "/app/frontend/dist"
 maximum_map_cameras = 50000
 maximum_history_points = 10000
 maximum_history_days = 366
-# After this age from the observation/download time, use a small white map dot.
-prediction_max_age_minutes = 15
+
+# Ages are measured from the observation/download timestamp, separately per parameter.
+# At fresh_minutes: white ring, coloured centre. At max_age_minutes: small white dot.
+[api.snow_freshness]
+fresh_minutes = 30
+max_age_minutes = 180
+
+[api.visibility_freshness]
+fresh_minutes = 15
+max_age_minutes = 30
 
 # Read-only supplementary map points. Exporter and CSV can live outside this repository.
 [supplementary_webcams]

@@ -46,19 +46,34 @@ Only credentials come from this file; connection settings belong in the backend 
 
 ## Configure before starting
 
-Set the observation freshness window in `config/backend.local.toml`:
+Set the two observation-age thresholds per parameter in `config/backend.local.toml`:
 
 ```toml
-[api]
-prediction_max_age_minutes = 15
+[api.snow_freshness]
+fresh_minutes = 30
+max_age_minutes = 180
+
+[api.visibility_freshness]
+fresh_minutes = 15
+max_age_minutes = 30
 ```
 
-The default and this deployment both use 15 minutes from the published download/observation time,
-independently for snow and visibility. At the limit, classified and unqualified cameras become small
-white dots; provider images and stored histories remain available. This is an observation-age rule,
-so after observations stop at night only small white WEOW dots and small black supplementary dots
-remain. Historical maps measure the same age against their selected map time. Restart the API after
-changing this setting; changing it does not require restarting the listener.
+These are the defaults and this deployment's values. Below `fresh_minutes`, markers retain their
+normal fill. From that age up to `max_age_minutes`, a white outer ring marks an ageing observation,
+with its published snow/visibility colours retained in the centre. At `max_age_minutes` or older,
+classified and unqualified cameras become small white dots. Grouped markers represent each camera's
+age in its own sector when ages differ; expanding the group retains the same age treatment.
+Qualification filtering still applies throughout the usable interval. Missing observations are
+small white dots immediately. Provider images and stored histories remain available.
+
+Ages use the published download/observation timestamp, never acquisition, processing, publication
+or UI reception times. Historical maps measure age against their selected map time. The map response
+provides the effective thresholds to the frontend legend, so there is no second setting to synchronize.
+After observations stop, only small white WEOW dots and small black supplementary dots remain once
+the parameter's maximum age is reached. Restart the API after changing threshold values; the listener
+does not use them. When upgrading from the old single-threshold configuration, remove
+`api.prediction_max_age_minutes`, add the two blocks above and rebuild both API and listener images
+so both services recognize the updated configuration schema.
 
 Set `mqtt.host`, `mqtt.port`, and `mqtt.topics` from the E-SOH observation connection information.
 Keep `qos = 1`. Initialization generates a unique client ID; preserve it across restarts and run

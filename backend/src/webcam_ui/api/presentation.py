@@ -9,34 +9,40 @@ from webcam_ui.domain.classification import classify, visibility_class
 from webcam_ui.domain.observations import stable_id
 from webcam_ui.domain.qualification import snow_qualification_passed
 from webcam_ui.ingestion.parser import timestamp
+from webcam_ui.settings import FreshnessSettings
 
 
-def build_map(rows: list[dict], parameter: str, at: datetime, maximum_age_minutes: int,
+def build_map(rows: list[dict], parameter: str, at: datetime, freshness: FreshnessSettings,
               qualified_only: bool = True) -> dict:
     sites = {}
-    cutoff = at - timedelta(minutes=maximum_age_minutes)
+    fresh_cutoff = at - timedelta(minutes=freshness.fresh_minutes)
+    expired_cutoff = at - timedelta(minutes=freshness.max_age_minutes)
     for row in rows:
         key = stable_id(row["naming_authority"], row["platform"])
         site = sites.setdefault(key, {"id": key, "platform": row["platform"],
                                      "name": row.get("platform_name"), "cams": []})
-        fresh = row.get("download_timestamp") and row["download_timestamp"] > cutoff
-        icon, uncertain, reason = classify(parameter, row if fresh else None)
+        downloaded = row.get("download_timestamp")
+        age_band = ("missing" if downloaded is None else "expired" if downloaded <= expired_cutoff
+                    else "ageing" if downloaded <= fresh_cutoff else "fresh")
+        usable = age_band in ("fresh", "ageing")
+        icon, uncertain, reason = classify(parameter, row if usable else None)
         qualification = row.get("snow_qualification") if parameter == "snow" else 2
-        if parameter == "snow" and qualified_only and fresh and not snow_qualification_passed(qualification):
+        if parameter == "snow" and qualified_only and usable and not snow_qualification_passed(qualification):
             icon, uncertain = "white", False
             reason = "scene_unqualified" if qualification is not None else "qualification_unknown"
-        if row.get("download_timestamp") and not fresh:
+        if age_band == "expired":
             reason = "stale"
         camera = {"p": row["processing_stream_id"], "name": row["name"],
                   "x": row["longitude"], "y": row["latitude"],
                   "altitude": row.get("altitude"),
                   "country": row.get("country"),
                   "qs": qualification,
+                  "freshness": age_band,
                   "cls": icon, "u": uncertain, "w": reason,
                   "t": row["download_timestamp"].isoformat() if row.get("download_timestamp") else None,
-                  "vl": row.get("visibility_lower") if fresh else None,
-                  "vu": row.get("visibility_upper") if fresh else None,
-                  "value": row.get("visibility_center") if fresh else None}
+                  "vl": row.get("visibility_lower") if usable else None,
+                  "vu": row.get("visibility_upper") if usable else None,
+                  "value": row.get("visibility_center") if usable else None}
         site["cams"].append(camera)
     features = []
     for site in sites.values():
@@ -60,6 +66,7 @@ def build_map(rows: list[dict], parameter: str, at: datetime, maximum_age_minute
             sum(camera["x"] for camera in cameras) / len(cameras),
             sum(camera["y"] for camera in cameras) / len(cameras)]}, "properties": site})
     return {"type": "FeatureCollection", "parameter": parameter, "at": at.isoformat(),
+            "freshness": freshness.model_dump(),
             "qualified_only": qualified_only,
             "counts": {"sites": len(features), "cameras": len(rows)}, "features": features}
 

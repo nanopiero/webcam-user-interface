@@ -106,6 +106,11 @@ Map parameters are `snow` and `visibility`. `at` is an optional timezone-aware I
 over the configured one-year ceiling are rejected. Responses explicitly report truncation and
 provide a continuation cursor; stored history is never trimmed to fit a diagram.
 
+Map freshness is derived from each observation's download timestamp at request time, with independent
+fresh/maximum ages for snow and visibility. It adds no database state. The response includes each
+camera's age category and the effective thresholds used by the frontend legend. Ageing observations
+retain their classes and visibility bounds until the maximum age; qualification filtering still applies.
+
 Site grouping uses published platform identity, never geographical proximity. Marker vocabularies
 and visibility interval bands follow the reference UI's supported rules. Missing/stale derived
 predictions remain white even when a raw interval exists. Unknown qualification/quality states

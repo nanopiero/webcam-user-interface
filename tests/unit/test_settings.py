@@ -7,6 +7,7 @@ from webcam_ui.settings import (
     BackendSettings,
     BoundingBox,
     FilterSettings,
+    FreshnessSettings,
     MQTTSettings,
     ROISettings,
     load_settings,
@@ -21,7 +22,9 @@ def test_examples_are_valid():
     assert settings.filters.bounding_box.enabled
     assert settings.roi.name == "France"
     assert settings.roi.countries == ["FR"]
-    assert settings.api.prediction_max_age_minutes == BackendSettings().api.prediction_max_age_minutes == 15
+    assert settings.api.snow_freshness.model_dump() == {"fresh_minutes": 30, "max_age_minutes": 180}
+    assert settings.api.visibility_freshness.model_dump() == {"fresh_minutes": 15, "max_age_minutes": 30}
+    assert settings.api.snow_freshness == BackendSettings().api.snow_freshness
     assert "NL" not in settings.filters.allowed_countries
 
 
@@ -31,6 +34,12 @@ def test_country_configuration_is_portable_normalized_and_deduplicated():
     assert settings.bounding_box.enabled
     with pytest.raises(ValidationError):
         FilterSettings(allowed_countries=["Finland"])
+
+
+@pytest.mark.parametrize("fresh,maximum", [(0, 30), (15, 0), (15, 15), (30, 15)])
+def test_freshness_thresholds_must_be_positive_and_increasing(fresh, maximum):
+    with pytest.raises(ValidationError):
+        FreshnessSettings(fresh_minutes=fresh, max_age_minutes=maximum)
 
 
 def test_roi_is_configurable_and_its_countries_must_be_allowed():

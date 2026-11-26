@@ -29,6 +29,7 @@ export interface Camera {
   altitude: number | null;
   country: string | null;
   qs?: number | null;
+  freshness?: "fresh" | "ageing" | "expired" | "missing";
   cls: string;
   u: boolean;
   w: string | null;
@@ -54,11 +55,17 @@ export interface SiteFeature {
   };
 }
 
+export interface FreshnessPolicy {
+  fresh_minutes: number;
+  max_age_minutes: number;
+}
+
 export interface MapPayload {
   type: "FeatureCollection";
   parameter: Parameter;
   at: string;
   qualified_only?: boolean;
+  freshness?: FreshnessPolicy;
   counts: { sites: number; cameras: number };
   features: SiteFeature[];
 }

@@ -1,7 +1,13 @@
-import type { Parameter } from "../../api/contracts";
+import type { FreshnessPolicy, Parameter } from "../../api/contracts";
 import { CLASS_COLOURS, VISIBILITY_STEPS, VISIBILITY_STEP_COLOURS } from "./icons";
 
-export default function Legend({ parameter }: { parameter: Parameter }) {
+function duration(minutes: number): string {
+  return minutes % 60 === 0 ? `${minutes / 60} h` : `${minutes} min`;
+}
+
+export default function Legend({ parameter, freshness }: { parameter: Parameter; freshness?: FreshnessPolicy }) {
+  const freshnessColour = parameter === "visibility"
+    ? VISIBILITY_STEP_COLOURS[3000] : CLASS_COLOURS["snow.undifferentiated"];
   const rows = parameter === "snow" ? [
     [CLASS_COLOURS["snow.none"], "No snow"],
     [CLASS_COLOURS["snow.intermediate"], "Intermediate snow cover"],
@@ -19,6 +25,15 @@ export default function Legend({ parameter }: { parameter: Parameter }) {
       <li><span className="swatch catalogue-swatch" style={{ background: "#111" }} />Additional webcams</li>
       {parameter === "snow" && <li><span className="swatch uncertain" />Published as uncertain</li>}
     </ul>
+    {freshness && <div className="freshness-legend" aria-label="Observation age">
+      <h3>Since download</h3>
+      <ul className="keys">
+        <li><span className="swatch freshness-solid" style={{ background: freshnessColour }} />Under {duration(freshness.fresh_minutes)}: solid</li>
+        <li><span className="swatch freshness-ring" style={{ background: freshnessColour }} />{duration(freshness.fresh_minutes)}–{duration(freshness.max_age_minutes)}: white ring</li>
+        <li><span className="swatch catalogue-swatch" style={{ background: "white" }} />From {duration(freshness.max_age_minutes)}: small white dot</li>
+      </ul>
+      <p className="muted small">Each camera’s sector shows its own age.</p>
+    </div>}
     <p className="muted small">{parameter === "visibility"
       ? "Two-tone markers show the interval’s upper bound above and lower bound below."
       : "Sites with equally frequent classes use a pie marker."}</p>

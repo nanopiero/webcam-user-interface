@@ -57,13 +57,19 @@ in the right panel and follow the active filters.
   is **France**, independently of the country checkboxes. Each applicable dataset loads once. Repeated show/hide changes only the layer's
   visibility. These overlay controls do not remove faint lines baked into the raster basemap.
 - **Latest** refreshes every 30 seconds when auto-refresh is enabled. **View time** selects the
-  latest observation available as of the given UTC time. The freshness window is
-  `api.prediction_max_age_minutes`, default **15 minutes**, measured from the observation's
-  `download_timestamp` (`properties.datetime` in MQTT). At that age, every classification or
-  unqualified white disc becomes a small white dot for that parameter. Acquisition, processing,
-  publication and UI reception times never extend freshness. Historical map views apply the same
-  age limit relative to the selected map time. Once observations have stopped for 15 minutes,
-  the latest view contains only small white WEOW dots and small black supplementary dots.
+  latest observation available as of the given UTC time. The backend's `api.snow_freshness` and
+  `api.visibility_freshness` blocks each configure `fresh_minutes` and `max_age_minutes`.
+  Snow defaults to **30 minutes / 180 minutes**, visibility to **15 minutes / 30 minutes**.
+  Before the first threshold, markers are fully coloured. From the first threshold, they have a white
+  outer ring with their colours retained in the centre. At the second threshold, every classification
+  or unqualified white disc becomes a small white dot. Mixed-age groups use camera sectors even if
+  their classes agree; each ageing sector has a white outer arc, and an expired sector is white.
+  Expanded cameras retain their individual styles. The legend reads the effective thresholds from
+  the map response. Qualification rules apply to both fresh and ageing observations.
+  Age uses `download_timestamp` (`properties.datetime` in MQTT); acquisition, processing,
+  publication and UI reception times never extend it. Historical maps measure age against the
+  selected map time. Once the parameter's maximum age has elapsed since observations stopped,
+  only small white WEOW dots and small black supplementary dots remain.
   The details panel explicitly labels its numerical summary as the latest received observation;
   history can end at the selected map time.
 - The webcam popup puts **Latest prediction** first in its observation section, followed by three

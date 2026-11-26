@@ -67,57 +67,20 @@ export function classColour(name?: string | null): string {
   const band = visibilityBandColours(name);
   // A band needs two colours, so a caller that can only take one is given the
   // lower bound's: it is the pessimistic end, which is what a fog warning is
-  // read for. Callers that can show both use bandImage instead.
+  // read for. Callers that can show both use markerImage instead.
   if (band) return band.lower;
   return CLASS_COLOURS[name] ?? CLASS_COLOURS.white;
 }
 
 /**
- * Draw a pie fill and return it as image data MapLibre can register.
+ * Draw camera sectors, preserving each visibility band's two colours.
  * MapLibre draws the outer outline separately so it stays continuous at small sizes.
- *
- * Sites are rendered through map layers rather than HTML markers, so a
- * multi-sector marker has to become a sprite. Only a few hundred distinct
- * sector combinations occur in practice, so images are generated on demand and
- * cached by signature.
+ * Ageing sectors retain their coloured centre and have a white outer ring.
+ * The same renderer serves single cameras, grouped sites and expanded cameras.
  */
-export function pieImage(colours: string[], size = 34): ImageData {
-  const scale = 2; // Drawn at twice the size so it stays crisp when scaled.
-  const pixels = size * scale;
-  const canvas = document.createElement("canvas");
-  canvas.width = pixels;
-  canvas.height = pixels;
-  const context = canvas.getContext("2d")!;
-  const centre = pixels / 2;
-  const radius = centre - 2 * scale;
-  const step = (Math.PI * 2) / colours.length;
-  colours.forEach((colour, index) => {
-    context.beginPath();
-    context.moveTo(centre, centre);
-    // Start at twelve o'clock so the first sector is where a reader looks.
-    context.arc(centre, centre, radius, -Math.PI / 2 + index * step,
-                -Math.PI / 2 + (index + 1) * step);
-    context.closePath();
-    context.fillStyle = colour;
-    context.fill();
-  });
-  return context.getImageData(0, 0, pixels, pixels);
-}
+export interface MarkerSector { lower: string; upper: string; ageing: boolean }
 
-/**
- * Draw a visibility band as the legacy pictogram does: the upper bound's
- * colour above, the lower bound's below, divided by a line when they differ.
- *
- * A circle layer carries one colour per feature, so a band whose two bounds
- * fall in different steps cannot be drawn by it. This produces the equivalent
- * sprite, registered and cached exactly like a pie.
- */
-export function bandImage(
-  lower: string,
-  upper: string,
-  _uncertain: boolean,
-  size = 34,
-): ImageData {
+export function markerImage(sectors: MarkerSector[], size = 34): ImageData {
   const scale = 2;
   const pixels = size * scale;
   const canvas = document.createElement("canvas");
@@ -126,29 +89,43 @@ export function bandImage(
   const context = canvas.getContext("2d")!;
   const centre = pixels / 2;
   const radius = centre - 2 * scale;
-
-  const half = (colour: string, from: number, to: number) => {
+  const step = (Math.PI * 2) / sectors.length;
+  const wedge = (radius: number, from: number, to: number) => {
     context.beginPath();
     context.moveTo(centre, centre);
     context.arc(centre, centre, radius, from, to);
     context.closePath();
-    context.fillStyle = colour;
-    context.fill();
   };
-  // Canvas angles grow clockwise from three o'clock, so the upper half of the
-  // disc is the half running from nine o'clock back to three.
-  half(upper, Math.PI, 0);
-  half(lower, 0, Math.PI);
-
-  if (lower !== upper) {
-    context.beginPath();
-    context.moveTo(centre - radius, centre);
-    context.lineTo(centre + radius, centre);
-    context.lineWidth = 1.2 * scale;
-    context.strokeStyle = "#222";
-    context.stroke();
-  }
-  // Outer outlines use a native circle layer, independent of sprite downscaling.
+  sectors.forEach(({ lower, upper, ageing }, index) => {
+    const from = -Math.PI / 2 + index * step;
+    const to = from + step;
+    context.save();
+    wedge(radius, from, to);
+    context.clip();
+    wedge(radius, Math.PI, Math.PI * 2);
+    context.fillStyle = upper;
+    context.fill();
+    wedge(radius, 0, Math.PI);
+    context.fillStyle = lower;
+    context.fill();
+    if (lower !== upper) {
+      context.beginPath();
+      context.moveTo(centre - radius, centre);
+      context.lineTo(centre + radius, centre);
+      context.lineWidth = 1.2 * scale;
+      context.strokeStyle = "#222";
+      context.stroke();
+    }
+    if (ageing) {
+      // Clip the white ring to this camera's sector; keep its centre coloured.
+      context.beginPath();
+      context.arc(centre, centre, radius * 0.82, from, to);
+      context.lineWidth = radius * 0.36;
+      context.strokeStyle = "#ffffff";
+      context.stroke();
+    }
+    context.restore();
+  });
   return context.getImageData(0, 0, pixels, pixels);
 }
 

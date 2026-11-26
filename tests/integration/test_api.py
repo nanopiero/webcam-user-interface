@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta
 
 import pytest
 from argon2 import PasswordHasher
@@ -163,7 +164,7 @@ def test_visibility_remains_qualified_and_is_unaffected_by_snow_view_filter(api,
 
 @pytest.mark.parametrize("fixture,qualification", [("feature", "qualified"), ("feature", "disqualified"),
     ("feature", "incomplete"), ("feature", None), ("visibility", None)])
-def test_map_expires_at_configured_download_age_before_qualification_and_ignores_later_pipeline_times(api, database, request, fixture, qualification):
+def test_map_freshness_boundaries_preserve_predictions_and_qualification_until_expiry(api, database, request, fixture, qualification):
     feature = request.getfixturevalue(fixture)
     history = feature["properties"]["history"]
     if fixture == "feature":
@@ -173,27 +174,44 @@ def test_map_expires_at_configured_download_age_before_qualification_and_ignores
     feature["properties"]["pubtime"] = "2026-11-17T10:14:30Z"
     assert seed(database, feature).accepted == 1
     parameter = "snow" if fixture == "feature" else "visibility"
-    assert api.get("/api/config").json()["max_prediction_age_minutes"] == 15
+    policy = api.app.state.settings.api.freshness_for(parameter)
+    assert api.get("/api/config").json()["freshness"][parameter] == policy.model_dump()
+    downloaded = datetime.fromisoformat(feature["properties"]["datetime"])
 
-    def camera(at, qualified_only=True):
+    def camera(age, qualified_only=True):
+        at = (downloaded + timedelta(seconds=age)).isoformat()
         response = api.get("/api/map", params={"parameter": parameter, "at": at, "qualified_only": qualified_only})
         assert response.status_code == 200
-        return response.json()["features"][0]["properties"]["cams"][0]
+        payload = response.json()
+        assert payload["freshness"] == policy.model_dump()
+        return payload["features"][0]["properties"]["cams"][0]
 
-    recent = camera("2026-11-17T10:14:59Z")
+    first = policy.fresh_minutes * 60
+    second = policy.max_age_minutes * 60
+    recent = camera(first - 1)
+    assert recent["freshness"] == "fresh"
     assert recent["w"] not in ("no_record", "stale")
     if fixture == "feature" and qualification != "qualified":
         assert recent["cls"] == "white"
         assert recent["w"] in ("scene_unqualified", "qualification_unknown")
     else:
         assert recent["cls"] != "white"
+    for age in (first, second - 1):
+        ageing = camera(age)
+        assert ageing["freshness"] == "ageing"
+        assert (ageing["cls"], ageing["w"], ageing["u"]) == (recent["cls"], recent["w"], recent["u"])
+        if parameter == "visibility":
+            assert (ageing["vl"], ageing["vu"], ageing["value"]) == (5000, 7000, 5800)
+        else:
+            assert camera(age, qualified_only=False)["cls"] == "snow.undifferentiated"
     for qualified_only in (True, False):
-        expired = camera("2026-11-17T10:15:00Z", qualified_only)
+        expired = camera(second, qualified_only)
         assert (expired["cls"], expired["w"], expired["u"]) == ("white", "stale", False)
+        assert expired["freshness"] == "expired"
         assert expired["vl"] is None and expired["vu"] is None and expired["value"] is None
-        assert camera("2026-11-17T10:20:00Z", qualified_only)["w"] == "stale"
-    api.app.state.settings.api.prediction_max_age_minutes = 30
-    assert camera("2026-11-17T10:20:00Z")["w"] != "stale"
+        assert camera(second + 60, qualified_only)["w"] == "stale"
+    policy.max_age_minutes += 10
+    assert camera(second)["freshness"] == "ageing"
 
 
 def test_high_snow_uses_each_observations_thresholds_and_keeps_qualification_filtering(api, database, feature):

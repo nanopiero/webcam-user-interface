@@ -168,7 +168,7 @@ function Observations({ configuration }: { configuration: FrontendConfiguration 
           <div className="site-summary" aria-label="Visible WEOW webcams"><strong>{count.toLocaleString()}</strong> WEOW webcams · {sites.length.toLocaleString()} sites</div>
           {supplementary?.enabled && <div className="site-summary" aria-label="Visible additional webcams"><strong>{additional.length.toLocaleString()}</strong> additional webcams</div>}
         </div>
-        <Legend parameter={parameter} />
+        <Legend parameter={parameter} freshness={data?.freshness} />
       </aside>
     </div>
     {diagrams.length > 0 && <section className="histories" aria-label="Prediction histories"><div className="histories-heading"><span>{diagrams.length} open histor{diagrams.length === 1 ? "y" : "ies"}</span><button className="quiet" onClick={() => setDiagrams([])}>Close all histories</button></div>

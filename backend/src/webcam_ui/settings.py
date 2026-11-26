@@ -102,6 +102,17 @@ class ProviderSettings(SettingsModel):
     request_timeout_seconds: float = Field(default=10, gt=0, le=30)
 
 
+class FreshnessSettings(SettingsModel):
+    fresh_minutes: int = Field(ge=1)
+    max_age_minutes: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def thresholds_are_ordered(self):
+        if self.max_age_minutes <= self.fresh_minutes:
+            raise ValueError("max_age_minutes must be greater than fresh_minutes")
+        return self
+
+
 class APISettings(SettingsModel):
     host: str = "0.0.0.0"
     port: int = Field(default=8080, ge=1024, le=65535)
@@ -110,7 +121,13 @@ class APISettings(SettingsModel):
     maximum_map_cameras: int = Field(default=50000, ge=1, le=100000)
     maximum_history_points: int = Field(default=10000, ge=10, le=100000)
     maximum_history_days: int = Field(default=366, ge=1, le=366)
-    prediction_max_age_minutes: int = Field(default=15, ge=1)
+    snow_freshness: FreshnessSettings = Field(
+        default_factory=lambda: FreshnessSettings(fresh_minutes=30, max_age_minutes=180))
+    visibility_freshness: FreshnessSettings = Field(
+        default_factory=lambda: FreshnessSettings(fresh_minutes=15, max_age_minutes=30))
+
+    def freshness_for(self, parameter: str) -> FreshnessSettings:
+        return self.snow_freshness if parameter == "snow" else self.visibility_freshness
 
 
 class SupplementaryWebcamSettings(SettingsModel):

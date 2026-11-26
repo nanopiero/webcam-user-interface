@@ -4,10 +4,10 @@ import type { ExpressionSpecification, GeoJSONSource, Map as LibreMap } from "ma
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import type { FeatureCollection, Point } from "geojson";
 import type { AltitudeBand, BorderVisibility, FrontendConfiguration, Parameter, SiteFeature, SupplementaryFeature } from "../../api/contracts";
-import { bandImage, classColour, pieImage, visibilityBandColours } from "./icons";
+import { classColour, markerImage } from "./icons";
 import { addBorderLayers, showBorderLayers } from "./borders";
 import { initialBorderVisibility } from "./roi";
-import { ALTITUDE_BANDS, SMALL_DOT_RADIUS, markerScale, siteForAltitude, smallWhiteMarker } from "./presentation";
+import { ALTITUDE_BANDS, SMALL_DOT_RADIUS, cameraSector, markerScale, needsSprite, siteForAltitude, siteSectors, smallWhiteMarker } from "./presentation";
 import { expandedCameraPositions, groupMarkerFactor } from "./expansion";
 
 // MapLibre 6 requires an explicit bundled worker URL when used with Vite.
@@ -177,22 +177,17 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
         const variant = siteForAltitude(site, altitude, parameter);
         if (!variant) continue;
         const properties = variant.properties;
-        const band = visibilityBandColours(properties.cls);
-        const classes = properties.tie && properties.pie?.length
-          ? properties.pie.slice(0, configuration.pie_sector_limit) : null;
-        const colours = classes?.map(classColour);
-        const icon = JSON.stringify([properties.cls, properties.u, classes]);
+        const sectors = siteSectors(variant, configuration.pie_sector_limit);
+        const icon = JSON.stringify(sectors);
         if (!instance.hasImage(icon)) {
-          instance.addImage(icon, colours ? pieImage(colours) : bandImage(
-            band?.lower ?? classColour(properties.cls), band?.upper ?? classColour(properties.cls), properties.u,
-          ), { pixelRatio: 2 });
+          instance.addImage(icon, markerImage(sectors), { pixelRatio: 2 });
         }
         icons[`icon_${altitude}`] = icon;
         icons[`factor_${altitude}`] = groupMarkerFactor(properties.n);
         icons[`small_${altitude}`] = properties.cams.every(smallWhiteMarker);
         icons[`uncertain_${altitude}`] = properties.u;
         icons[`fill_${altitude}`] = classColour(properties.cls);
-        icons[`sprite_${altitude}`] = Boolean(colours || (band && band.lower !== band.upper));
+        icons[`sprite_${altitude}`] = needsSprite(sectors);
       }
       return { type: "Feature" as const, geometry: site.geometry,
         properties: { id: site.properties.id, ...icons } };
@@ -237,14 +232,12 @@ export default function MapView({ configuration, sites, allSites, parameter, alt
         pixel => instance.unproject([pixel.x, pixel.y]).toArray()) : [];
       (instance.getSource("expanded-cameras") as GeoJSONSource).setData({ type: "FeatureCollection",
         features: points.map(({ camera, coordinates }) => {
-          const band = visibilityBandColours(camera.cls);
-          const icon = JSON.stringify([camera.cls, camera.u, null]);
-          if (!instance.hasImage(icon)) instance.addImage(icon, bandImage(
-            band?.lower ?? classColour(camera.cls), band?.upper ?? classColour(camera.cls), camera.u,
-          ), { pixelRatio: 2 });
+          const sectors = [cameraSector(camera)];
+          const icon = JSON.stringify(sectors);
+          if (!instance.hasImage(icon)) instance.addImage(icon, markerImage(sectors), { pixelRatio: 2 });
           return { type: "Feature" as const, geometry: { type: "Point" as const, coordinates },
             properties: { id: expanded!.properties.id, p: camera.p, icon, fill: classColour(camera.cls),
-              uncertain: camera.u, small: smallWhiteMarker(camera), sprite: Boolean(band && band.lower !== band.upper) } };
+              uncertain: camera.u, small: smallWhiteMarker(camera), sprite: needsSprite(sectors) } };
         }) });
       (instance.getSource("camera-links") as GeoJSONSource).setData({ type: "FeatureCollection",
         features: points.map(({ coordinates }) => ({ type: "Feature" as const, properties: {},
