@@ -96,14 +96,6 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
   // The guide follows the map without recreating the graph or losing its zoom.
   useEffect(() => { graph.current?.updateOptions({}); }, [mapTime]);
 
-  function zoom(factor: number) {
-    const instance = graph.current;
-    if (!instance) return;
-    const [left, right] = instance.xAxisRange(), fullStart = Date.parse(start), fullEnd = Date.parse(end);
-    const width = Math.min(fullEnd - fullStart, Math.max(1000, (right - left) * factor));
-    const nextStart = Math.max(fullStart, Math.min(fullEnd - width, (left + right - width) / 2));
-    instance.updateOptions({ dateWindow: [nextStart, nextStart + width] });
-  }
   function resetView() {
     graph.current?.resetZoom();
     setTooltip(null);
@@ -118,6 +110,7 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
       {thresholdsVisible && <><span><i className="chart-key lower-threshold-key" />Lower snow threshold</span>
         <span><i className="chart-key upper-threshold-key" />Upper snow threshold</span>
         {!prepared.hasThresholds && <span>No thresholds published in this range</span>}</>}
+      <button className="quiet chart-reset" onClick={resetView} title="Reset zoom and Earlier/Later navigation">Reset view</button>
     </div>
     <div className="chart-viewport">
       <div ref={host} className="dygraph-chart" role="img" tabIndex={0}
@@ -153,10 +146,6 @@ export default function HistoryChart({ points, parameter, mode, start, end, mapT
         <HistoryReadout point={hovered} parameter={parameter} mode={mode} />
       </div>}
     </div>
-    <div className="chart-navigation"><div className="segmented" aria-label="Chart zoom">
-      <button onClick={() => zoom(0.5)}>Zoom in</button><button onClick={() => zoom(2)}>Zoom out</button>
-      <button onClick={resetView} title="Reset zoom and Earlier/Later navigation">Reset view</button>
-    </div><span title="Double-click resets zoom and Earlier/Later navigation; pinch on touchscreens">Drag to zoom · Shift-drag to pan</span></div>
     <div className="chart-readout" aria-live="polite">
       {hovered ? <HistoryReadout point={hovered} parameter={parameter} mode={mode} />
         : <span>The black vertical line marks the selected map date and time.</span>}

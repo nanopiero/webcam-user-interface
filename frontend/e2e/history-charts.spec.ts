@@ -69,6 +69,15 @@ async function windowOf(chart: Locator) {
   return chart.evaluate(element => [Number((element as HTMLElement).dataset.windowStart), Number((element as HTMLElement).dataset.windowEnd)]);
 }
 
+async function dragZoom(page: Page, chart: Locator) {
+  await chart.scrollIntoViewIfNeeded();
+  const box = (await chart.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.35, box.y + 55);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.7, box.y + 55, { steps: 10 });
+  await page.mouse.up();
+}
+
 async function hoverPaintedInterval(page: Page, chart: Locator, calibrated = false) {
   await chart.scrollIntoViewIfNeeded();
   const pixel = await chart.evaluate((element, calibrated) => {
@@ -100,6 +109,8 @@ test("Dygraphs snow classes, raw thresholds, zoom and map-time guide use publish
   await expect(chart.locator(".dygraph-y2label")).toHaveCount(0);
   await expect(history.locator(".chart-keys")).not.toContainText("snow threshold");
   await expect(chart.locator(".dygraph-rangesel-zoomhandle")).toHaveCount(0);
+  await expect(history.getByRole("button", { name: /Zoom in|Zoom out/ })).toHaveCount(0);
+  await expect(history.getByText(/Drag to zoom|Shift-drag to pan/)).toHaveCount(0);
   expect((await chart.boundingBox())!.height).toBeLessThan(180);
   const mapBox = (await page.locator(".map-wrap").boundingBox())!;
   const chartBox = (await chart.boundingBox())!;
@@ -114,19 +125,12 @@ test("Dygraphs snow classes, raw thresholds, zoom and map-time guide use publish
   await expect(history.locator(".chart-readout")).toContainText("Class: High snow cover");
   await page.screenshot({ path: "test-results/dygraphs-snow-classes.png", fullPage: true });
   const original = await windowOf(chart), span = original[1] - original[0];
-  await history.getByRole("button", { name: "Zoom in", exact: true }).click();
-  await expect.poll(async () => { const range = await windowOf(chart); return range[1] - range[0]; }).toBeLessThan(span * 0.6);
-  await history.getByRole("button", { name: "Zoom out", exact: true }).click();
-  await expect.poll(async () => { const range = await windowOf(chart); return range[1] - range[0]; }).toBeGreaterThan(span * 0.9);
-  await chart.scrollIntoViewIfNeeded();
-  const box = (await chart.boundingBox())!;
-  await page.mouse.move(box.x + box.width * 0.35, box.y + 70);
-  await page.mouse.down(); await page.mouse.move(box.x + box.width * 0.7, box.y + 70, { steps: 10 }); await page.mouse.up();
+  await dragZoom(page, chart);
   await expect.poll(async () => { const range = await windowOf(chart); return range[1] - range[0]; }).toBeLessThan(span * 0.8);
   await history.getByRole("button", { name: "Reset view", exact: true }).click();
   await expect.poll(async () => { const range = await windowOf(chart); return range[1] - range[0]; }).toBeGreaterThan(span * 0.99);
   // Move the map guide inside an already zoomed chart. Its zoom and loaded history stay intact.
-  await history.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await dragZoom(page, chart);
   const zoomed = await windowOf(chart);
   const selected = new Date((zoomed[0] + zoomed[1]) / 2).toISOString().slice(0, 16);
   await page.getByLabel("Map time (UTC)").fill(selected);
@@ -175,7 +179,7 @@ test("Dygraphs raw/calibrated visibility preserves exact centres, missing values
   await page.screenshot({ path: "test-results/dygraphs-visibility-calibrated.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await chart.scrollIntoViewIfNeeded();
-  await history.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await dragZoom(page, chart);
   await expect(history.locator(".chart-map-time")).toBeHidden();
   await expect(history.locator(".chart-keys")).toContainText("outside visible range");
   await history.getByRole("button", { name: "Reset view", exact: true }).click();
@@ -204,7 +208,7 @@ test("Earlier/Later retrieve preceding days and double-click restores the select
   await expect(history.locator(".chart-footer")).toContainText("1 observations");
   await history.getByRole("img").focus(); await page.keyboard.press("Home");
   await expect(history.locator(".chart-readout")).toContainText("Class: Intermediate snow cover");
-  await history.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await dragZoom(page, chart);
   await expect.poll(async () => { const range = await windowOf(chart); return range[1] - range[0]; }).toBeLessThan(86400000);
   await chart.dblclick({ position: { x: 240, y: 55 } });
   await expect(history.locator(".chart-footer")).toContainText("6 observations");
@@ -234,7 +238,7 @@ test("empty Dygraphs histories keep the map-time guide and zoom controls without
   await expect(history.locator(".chart-footer")).toContainText("0 observations");
   await expect(history.locator(".chart-keys")).not.toContainText("snow threshold");
   await expect(history.locator(".chart-map-time")).toBeVisible();
-  await history.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await dragZoom(page, history.getByRole("img"));
   await history.getByRole("button", { name: "Reset view", exact: true }).click();
   await history.getByRole("button", { name: "Raw model interval" }).click();
   await expect(history.locator(".chart-keys")).toContainText("No thresholds published");

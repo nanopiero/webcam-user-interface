@@ -116,8 +116,8 @@ in the right panel and follow the active filters.
   published visibility bounds and the published centre, when supplied. No midpoint is inferred.
   Intervals are discrete vertical bars; missing results use a labelled **Unavailable** row and are
   never filled or interpolated. Histories use [Dygraphs](https://dygraphs.com/) with drag-to-zoom,
-  Shift-drag panning, touch pinch and explicit **Zoom in**, **Zoom out**, and
-  **Reset view** buttons. Zoom/pan operate on downloaded data without map/history requests.
+  Shift-drag panning, touch pinch and a compact **Reset view** button beside the chart legend.
+  Zoom/pan operate on downloaded data without map/history requests.
   Double-click or **Reset view** clears zoom/pan and cancels Earlier/Later moves, returning to the
   last explicitly selected preset/custom period (or the initial period if none was selected).
   The idle readout explains that the black vertical line marks the selected map date and time.
