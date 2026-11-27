@@ -43,8 +43,8 @@ for (const parameter of ["snow", "visibility"] as const) {
     await page.getByRole("checkbox", { name: "Auto · 30 s" }).uncheck();
     await expect(page.getByLabel("Sites in map view")).toHaveText("5 sites in view");
     const legend = page.getByLabel("Observation age");
-    await expect(legend).toContainText(parameter === "snow" ? "30 min–3 h: white ring" : "15 min–30 min: white ring");
-    await expect(legend).toContainText(parameter === "snow" ? "From 3 h: small white dot" : "From 30 min: small white dot");
+    await expect(legend.locator(".keys li")).toHaveText(parameter === "snow"
+      ? ["Under 30 min", "30 min–3 h", "From 3 h"] : ["Under 15 min", "15 min–30 min", "From 30 min"]);
     const legendColour = parameter === "snow" ? "rgb(31, 111, 178)" : "rgb(255, 140, 0)";
     await expect(legend.locator(".freshness-solid")).toHaveCSS("background-color", legendColour);
     await expect(legend.locator(".freshness-ring")).toHaveCSS("background-color", legendColour);

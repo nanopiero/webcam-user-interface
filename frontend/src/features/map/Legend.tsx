@@ -29,9 +29,9 @@ export default function Legend({ parameter, freshness }: { parameter: Parameter;
     {freshness && <div className="freshness-legend" aria-label={t("Observation age")}>
       <h3>{t("Since download")}</h3>
       <ul className="keys">
-        <li><span className="swatch freshness-solid" style={{ background: freshnessColour }} />{t("Under {duration}: solid", { duration: duration(freshness.fresh_minutes) })}</li>
-        <li><span className="swatch freshness-ring" style={{ background: freshnessColour }} />{t("{fresh}–{maximum}: white ring", { fresh: duration(freshness.fresh_minutes), maximum: duration(freshness.max_age_minutes) })}</li>
-        <li><span className="swatch catalogue-swatch" style={{ background: "white" }} />{t("From {duration}: small white dot", { duration: duration(freshness.max_age_minutes) })}</li>
+        <li><span className="swatch freshness-solid" style={{ background: freshnessColour }} />{t("Under {duration}", { duration: duration(freshness.fresh_minutes) })}</li>
+        <li><span className="swatch freshness-ring" style={{ background: freshnessColour }} />{t("{fresh}–{maximum}", { fresh: duration(freshness.fresh_minutes), maximum: duration(freshness.max_age_minutes) })}</li>
+        <li><span className="swatch catalogue-swatch" style={{ background: "white" }} />{t("From {duration}", { duration: duration(freshness.max_age_minutes) })}</li>
       </ul>
       <p className="muted small">{t("Each camera’s sector shows its own age.")}</p>
     </div>}
