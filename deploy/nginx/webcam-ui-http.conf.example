@@ -1,0 +1,16 @@
+# Fresh installations only: keep an existing HTTPS gateway running during issuance.
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name @@UI_HOSTNAME@@;
+    auth_basic off;
+
+    location ^~ /.well-known/acme-challenge/ {
+        auth_basic off;
+        root /var/www/letsencrypt;
+        default_type text/plain;
+        try_files $uri =404;
+    }
+
+    location / { return 404; }
+}

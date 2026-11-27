@@ -4,7 +4,10 @@
 
 Use Docker Engine with the Compose plugin. PostgreSQL and all application runtime dependencies
 run in containers; host PostgreSQL/Node installations are not needed for backend deployment.
-The public gateway is configured separately in [nginx-rocky.md](nginx-rocky.md).
+The public gateway is configured separately in [nginx-rocky.md](nginx-rocky.md),
+using the administrator's `UI_HOSTNAME` parameter and the assigned EWC public DNS
+name. DNS/TLS migration is a host operation; it does not change backend settings,
+MQTT, database storage or the application's loopback port binding.
 
 The application user (`sandbox`) initializes the repository and launches the application.
 The administrator installs Docker and configures access once; Nginx and certificate management

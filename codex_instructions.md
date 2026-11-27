@@ -187,25 +187,33 @@ Deliver the implementation, configuration examples, migrations, tests and concis
 
 Keep the application lightweight and independent of the operational ML infrastructure.
 
-## Public access through Nginx — Rocky Linux, without DNS
+## Public access through Nginx — Rocky Linux, EWC DNS
 
-The webcam UI will initially be exposed through the EWC VM's **public IP address**, without a DNS name.
+The webcam UI uses the EWC VM's assigned **public DNS hostname**, configured through
+`UI_HOSTNAME`. This deployment requirement supersedes the original IP-only gateway.
 
 Provide a deployment procedure for **Rocky Linux 9**, using Nginx as an HTTPS reverse proxy.
 
 Requirements:
 
-- Allow visitors to access `https://<PUBLIC_IP>/` using a username and password.
+- Allow visitors to access `https://<UI_HOSTNAME>/` using a username and password.
 - Implement viewer authentication through Nginx HTTP Basic Authentication, using securely hashed passwords.
 - Keep the webcam application on a private interface or localhost, accessible only to Nginx.
 - Never expose PostgreSQL or MQTT directly to the Internet.
 - Preserve separate application administrator authentication for modifying the webcam blacklist.
-- Support an EWC public/floating IP without requiring DNS.
-- Prefer a publicly trusted **Let's Encrypt IP-address certificate** using Certbot 5.4+ with the `shortlived` profile and webroot validation. Configure automatic renewal and Nginx reload.
-- Do not use the traditional domain-based `certbot --nginx -d` command.
+- Identify the assigned EWC FQDN through Morpheus/EWC support and verify its public DNS
+  resolves to the VM's public/floating IP. Do not guess or hardcode machine, tenancy or cloud.
+- Verify that the name is eligible for a public TLS certificate; underscore-containing
+  names require a valid assigned alias from EWC support.
+- Use a standard **Let's Encrypt domain certificate**, Certbot webroot validation and
+  the existing automatic renewal service/timer with Nginx reload. No explicit profile is required.
+- Keep the HTTP ACME challenge accessible without authentication and redirect ordinary
+  HTTP to the configured HTTPS hostname.
 - Document Rocky Linux `dnf` installation commands, EWC security groups, `firewalld`, and SELinux configuration for Nginx reverse-proxy connections.
 - Keep HTTPS mandatory for password authentication. Do not offer unauthenticated or unencrypted HTTP as a fallback.
-- Provide example Nginx configuration using placeholders for the public IP, upstream private IP and certificate paths.
+- Provide validated Nginx templates using `UI_HOSTNAME`, a loopback upstream and
+  consistent domain-certificate paths. Preserve existing HTTPS locations, including
+  separately authenticated weather-map access and code-server where installed.
 - Ensure the frontend calls the backend API through the same HTTPS origin.
 
 Document the deployment in `docs/nginx-rocky.md`, separately from the main application configuration.

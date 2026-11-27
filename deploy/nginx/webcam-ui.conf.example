@@ -1,22 +1,24 @@
-# Replace PUBLIC_IP and UI_UPSTREAM before installing under /etc/nginx/conf.d/.
+# Render with gateway.py. For an existing gateway use --existing to retain its locations.
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
-    server_name PUBLIC_IP;
+    server_name @@UI_HOSTNAME@@;
+    auth_basic off;
     location ^~ /.well-known/acme-challenge/ {
+        auth_basic off;
         root /var/www/letsencrypt;
         default_type text/plain;
         try_files $uri =404;
     }
-    location / { return 308 https://PUBLIC_IP$request_uri; }
+    location / { return 308 https://@@UI_HOSTNAME@@$request_uri; }
 }
 
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
-    server_name PUBLIC_IP;
-    ssl_certificate CERTIFICATE_FILE;
-    ssl_certificate_key CERTIFICATE_KEY_FILE;
+    server_name @@UI_HOSTNAME@@;
+    ssl_certificate @@CERTIFICATE_FILE@@;
+    ssl_certificate_key @@CERTIFICATE_KEY_FILE@@;
     ssl_protocols TLSv1.2 TLSv1.3;
     server_tokens off;
 
@@ -24,7 +26,7 @@ server {
     auth_basic_user_file /etc/nginx/webcam-viewers.htpasswd;
 
     location / {
-        proxy_pass UI_UPSTREAM;
+        proxy_pass @@UI_UPSTREAM@@;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

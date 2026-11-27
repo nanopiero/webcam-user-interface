@@ -84,6 +84,13 @@ Use this wrapper so Compose receives the storage directory and runtime UID from 
 configuration/secret ownership. The PostgreSQL bind mount defaults to **`/data/db_ui`**.
 The application is published only on **`127.0.0.1:8080`**, behind the host Nginx gateway.
 
+The administrator configures **`UI_HOSTNAME`** with the assigned EWC public FQDN.
+The [EWC DNS HTTPS procedure](docs/nginx-rocky.md) checks DNS and hostname eligibility,
+uses a normal Let's Encrypt domain certificate with webroot validation, and retains
+viewer authentication and the existing renewal timer. Existing gateways migrate
+their hostname/certificate while preserving custom HTTPS routes such as weather maps
+and code-server. The operator continues to run the application without sudo.
+
 - [Backend deployment and operation](docs/backend-operations.md)
 - [Backend architecture and database](docs/backend-architecture.md)
 - [Frontend usage, configuration and development](docs/frontend.md)
